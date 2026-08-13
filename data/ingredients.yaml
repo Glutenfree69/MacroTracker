@@ -6,19 +6,7 @@
 #
 # Le CI vérifie Atwater (4P + 4G + 9L + 2fibres ≈ kcal) et refuse la PR si ça dérive.
 
-- id: poulet_filet_cru
-  nom: Filet de poulet (cru)
-  categorie: proteines
-  kcal: 121
-  proteines: 20
-  glucides: 0.0
-  lipides: 3.1
-  fibres: 0.0
-  portions:
-    - { label: "1 filet", g: 150 }
-  note: "Carrefour, barquette 500 g — étiquette du 2026-08-02"
-
-- id: boeuf_haché_cru
+- id: boeuf_hache_cru
   nom: Boeuf haché 5%
   categorie: proteines
   kcal: 125
@@ -57,7 +45,7 @@
   lipides: 0.0
   fibres: 0.0
 
-- id: carré_frais
+- id: carre_frais
   nom: Carré frais ail et fines herbes
   categorie: proteines
   kcal: 85
@@ -139,7 +127,7 @@
   lipides: 0.5
   fibres: 3.2
 
-- id: purée_carrottes
+- id: puree_carrottes
   nom: Purée de carrottes indus
   categorie: legumes
   kcal: 61
@@ -148,7 +136,7 @@
   lipides: 4.3
   fibres: 2.3
 
-- id: épinards
+- id: epinards
   nom: Épinards surgelé
   categorie: legumes
   kcal: 23
