@@ -109,7 +109,7 @@
   portions:
     - { label: "1 poignée", g: 30 }
 
-- id: Cacao
+- id: cacao
   nom: Cacao en poudre
   categorie: lipides
   kcal: 308
