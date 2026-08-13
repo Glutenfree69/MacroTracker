@@ -1,23 +1,8 @@
-# Projet Xcode généré par XcodeGen — ne jamais committer, régénérer avec `xcodegen generate`
-*.xcodeproj/
-*.xcworkspace/
+node_modules/
+dist/
 
-# Xcode
-build/
-DerivedData/
-*.xcuserstate
-xcuserdata/
-*.moved-aside
-*.hmap
-*.ipa
-*.dSYM.zip
-*.dSYM
+# Généré par scripts/build-ingredients.mjs à partir de data/ingredients.yaml.
+public/ingredients.json
 
-# Swift Package Manager
-.build/
-.swiftpm/
-Packages/
-Package.resolved
-
-# macOS
-.DS_Store
+# Exports de la base de repas, s'ils atterrissent ici.
+*.sqlite

@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <rect width="64" height="64" rx="14" fill="#171b22"/>
+  <rect x="10" y="40" width="44" height="8" rx="4" fill="#3b4250"/>
+  <rect x="10" y="40" width="16" height="8" rx="4" fill="#6ea8fe"/>
+  <rect x="26" y="40" width="14" height="8" fill="#7bd88f"/>
+  <rect x="40" y="40" width="9" height="8" rx="4" fill="#f0a45f"/>
+  <text x="32" y="32" font-family="ui-sans-serif,system-ui,sans-serif" font-size="26"
+        font-weight="700" fill="#e6e9ef" text-anchor="middle">M</text>
+</svg>

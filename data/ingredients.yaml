@@ -1,0 +1,115 @@
+# Base d'ingrédients — source de vérité, éditée à la main.
+#
+# RÈGLE : les valeurs sont TOUJOURS pour 100 g de l'aliment DANS L'ÉTAT OÙ TU LE PÈSES.
+# Tu pèses ton riz cuit ? Alors crée "riz_basmati_cuit", pas "riz_basmati_cru".
+# (macros du cru ÷ facteur de rendement — riz : ~2.5, pâtes : ~2.4, lentilles : ~2.4)
+#
+# Le CI vérifie Atwater (4P + 4G + 9L + 2fibres ≈ kcal) et refuse la PR si ça dérive.
+
+- id: poulet_filet_cru
+  nom: Filet de poulet (cru)
+  categorie: proteines
+  kcal: 121
+  proteines: 22.5
+  glucides: 0.0
+  lipides: 3.1
+  fibres: 0.0
+  portions:
+    - { label: "1 filet", g: 150 }
+  note: "Carrefour, barquette 500 g — étiquette du 2026-08-02"
+
+- id: oeuf_entier
+  nom: Œuf entier
+  categorie: proteines
+  kcal: 139
+  proteines: 12.7
+  glucides: 0.3
+  lipides: 9.5
+  fibres: 0.0
+  portions:
+    - { label: "1 œuf moyen (cal. M)", g: 53 }
+    - { label: "1 gros œuf (cal. L)", g: 63 }
+
+- id: skyr_nature
+  nom: Skyr nature
+  categorie: proteines
+  kcal: 63
+  proteines: 11.0
+  glucides: 4.0
+  lipides: 0.2
+  fibres: 0.0
+  portions:
+    - { label: "1 pot", g: 150 }
+
+- id: riz_basmati_cuit
+  nom: Riz basmati (cuit)
+  categorie: feculents
+  kcal: 140
+  proteines: 3.2
+  glucides: 30.9
+  lipides: 0.4
+  fibres: 0.5
+  note: "349 kcal/100 g cru ÷ 2.5 de rendement"
+
+- id: patate_douce_cuite
+  nom: Patate douce (cuite au four)
+  categorie: feculents
+  kcal: 90
+  proteines: 2.0
+  glucides: 18.5
+  lipides: 0.2
+  fibres: 3.3
+
+- id: flocons_avoine
+  nom: Flocons d'avoine
+  categorie: feculents
+  kcal: 375
+  proteines: 13.5
+  glucides: 58.7
+  lipides: 7.0
+  fibres: 10.0
+  portions:
+    - { label: "1 bol", g: 80 }
+
+- id: huile_olive
+  nom: Huile d'olive
+  categorie: lipides
+  kcal: 900
+  proteines: 0.0
+  glucides: 0.0
+  lipides: 100.0
+  fibres: 0.0
+  portions:
+    - { label: "1 c. à soupe", g: 13 }
+    - { label: "1 c. à café", g: 5 }
+
+- id: amandes
+  nom: Amandes
+  categorie: lipides
+  kcal: 634
+  proteines: 22.0
+  glucides: 5.0
+  lipides: 53.4
+  fibres: 12.5
+  portions:
+    - { label: "1 poignée", g: 30 }
+
+- id: brocoli_cuit
+  nom: Brocoli (cuit vapeur)
+  categorie: legumes
+  kcal: 35
+  proteines: 3.1
+  glucides: 2.4
+  lipides: 0.5
+  fibres: 3.2
+
+- id: banane
+  nom: Banane
+  categorie: fruits
+  kcal: 92
+  proteines: 1.1
+  glucides: 19.6
+  lipides: 0.3
+  fibres: 2.1
+  portions:
+    - { label: "1 banane moyenne (épluchée)", g: 118 }
