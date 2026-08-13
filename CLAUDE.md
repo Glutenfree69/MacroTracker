@@ -15,10 +15,11 @@ projet a commencé en SwiftUI/SwiftData avant d'être repris en web.
 
 ## Périmètre v1 — ne pas élargir sans qu'on le demande
 
-Logger des repas, voir les totaux glucides / protéines / lipides / calories du
-jour, régler ses objectifs. C'est tout. Explicitement **hors périmètre** : API
-externe (OpenFoodFacts & co), code-barres, comptes utilisateurs, sync cloud,
-graphiques d'historique, recettes composées, micronutriments.
+Logger des repas et voir les totaux glucides / protéines / lipides / calories du
+jour. C'est tout. Explicitement **hors périmètre** : objectifs et cibles
+journalières (retirés à la demande : on totalise, on ne juge pas), API externe
+(OpenFoodFacts & co), code-barres, comptes utilisateurs, sync cloud, graphiques
+d'historique, recettes composées, micronutriments.
 
 ## Décisions arrêtées — ne pas relitiger
 
@@ -28,8 +29,9 @@ graphiques d'historique, recettes composées, micronutriments.
 | kcal | **saisies**, pas dérivées du 4/4/9 — l'étiquette fait foi, Atwater ne sert qu'à valider |
 | Aliments | vivent dans `data/ingredients.yaml`, versionnés par git, validés par la CI |
 | Repas | vivent dans le navigateur, base SQLite en OPFS, jamais poussés |
-| Objectifs | 4 cibles journalières, **datées** (`objectif(depuis, …)`) |
-| Organisation | entrées groupées par repas (petit-déj / déjeuner / dîner / collation) |
+| Objectifs | **aucun** — pas de cible journalière, pas de barre de progression |
+| Repas | génériques et illimités, `repas(id, jour, ordre)`, libellés « Repas N » par rang |
+| Vue du jour | anneau de **répartition** (part des kcal par macro) + total au centre |
 | Stack | Vite + TypeScript sans framework, SQLite WASM (VFS OPFS-SAHPool) dans un Worker |
 
 Deux contraintes techniques enchaînées, qui expliquent le VFS choisi : le VFS
@@ -86,3 +88,10 @@ Le déploiement est automatique : push sur `main` → workflow
   Le pont, c'est Exporter / Restaurer.
 - **Fenêtre privée = pas d'OPFS.** L'app affiche un écran d'erreur explicite
   plutôt que de faire semblant.
+- **Un seul onglet.** SQLite verrouille son fichier OPFS en exclusivité ; un
+  deuxième onglet échoue à l'ouverture. `src/app.ts` reconnaît l'erreur et le dit
+  en français au lieu d'afficher le message brut du navigateur.
+- **Migration de schéma.** `migrer()` dans `src/db.worker.ts` reconstruit `ligne`
+  quand elle vient de la v1 (repas fixes `petit_dej`/`dejeuner`/…). Toute
+  évolution du schéma passe par là, jamais par un `DROP TABLE` : les journées
+  passées ne se réécrivent pas.

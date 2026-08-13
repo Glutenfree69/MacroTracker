@@ -7,24 +7,18 @@ type Ing = {
   note: string | null; portions_json: string | null
 }
 type Ligne = {
-  id: number; jour: string; repas: string; nom: string; grammes: number
+  id: number; jour: string; repas_id: number; nom: string; grammes: number
   kcal: number; proteines: number; glucides: number; lipides: number; fibres: number
 }
-type Objectif = { kcal: number; proteines: number; glucides: number; lipides: number }
+type Repas = { id: number; ordre: number }
+type Apercu = { id: number; ordre: number; n: number; kcal: number; apercu: string | null }
 
 /** Une seule modale ouverte à la fois — l'état de l'app tient dans ces variables. */
 type Modale =
-  | { type: 'recherche'; repas: string }
-  | { type: 'quantite'; repas: string; ing: Ing }
-  | { type: 'objectifs' }
+  | { type: 'recherche'; repas: number | null }
+  | { type: 'quantite'; repas: number | null; ing: Ing }
   | { type: 'copier' }
 
-const REPAS = [
-  { cle: 'petit_dej', nom: 'Petit-déjeuner' },
-  { cle: 'dejeuner', nom: 'Déjeuner' },
-  { cle: 'diner', nom: 'Dîner' },
-  { cle: 'collation', nom: 'Collation' },
-]
 const MACROS = [
   { cle: 'proteines', nom: 'Protéines', kcalParG: 4 },
   { cle: 'glucides', nom: 'Glucides', kcalParG: 4 },
@@ -40,16 +34,24 @@ const esc = (s: unknown) =>
 const dateFr = (j: string) =>
   new Date(j + 'T12:00:00').toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })
 
+const doux = matchMedia('(prefers-reduced-motion: reduce)').matches
+
 let jour = iso(new Date())
 let ingredients: Ing[] = []
 let lignes: Ligne[] = []
-let objectif: Objectif = { kcal: 2400, proteines: 180, glucides: 250, lipides: 80 }
+let repasDuJour: Repas[] = []
 let modale: Modale | null = null
 
+// D'où repartent les animations : la couronne et le compteur glissent de l'état
+// précédent vers le nouveau au lieu de sauter. Remis à zéro quand on change de
+// jour, pour que la journée se dessine.
+let precedent = { kcal: 0, arcs: [0, 0, 0] }
+let animerLignes = true
+
 async function charger() {
-  const d = await call<{ lignes: Ligne[]; objectif: Objectif }>('jour', { jour })
+  const d = await call<{ lignes: Ligne[]; repas: Repas[] }>('jour', { jour })
   lignes = d.lignes
-  if (d.objectif) objectif = d.objectif
+  repasDuJour = d.repas
   dessiner()
 }
 
@@ -68,85 +70,131 @@ function ouvrir(m: Modale | null) {
   dessiner()
 }
 
-/* ── La barre du jour ──────────────────────────────────────────────
-   Sa largeur, ce sont les kcal ; ses segments, d'où viennent ces kcal.
-   Le cran vertical marque l'objectif. Une seule image pour la journée. */
-function barre() {
-  const kcal = total('kcal')
-  const echelle = Math.max(objectif.kcal, kcal) * 1.04 || 1
-  const segs = MACROS.map((m) => {
-    const part = total(m.cle) * m.kcalParG
-    return `<span class="seg seg--${m.cle}" style="width:${(part / echelle) * 100}%"
-             title="${m.nom} : ${r0(part)} kcal"></span>`
-  }).join('')
-  const depasse = kcal > objectif.kcal
-
-  return el(`
-    <section class="jauge">
-      <header class="jauge__tete">
-        <div>
-          <span class="chiffre chiffre--grand">${r0(kcal)}</span>
-          <span class="unite">kcal</span>
-        </div>
-        <div class="reste ${depasse ? 'reste--depasse' : ''}">
-          ${depasse ? `+${r0(kcal - objectif.kcal)} au-dessus` : `${r0(objectif.kcal - kcal)} restantes`}
-        </div>
-      </header>
-      <div class="piste">
-        ${segs}
-        <span class="cran" style="left:${Math.min(100, (objectif.kcal / echelle) * 100)}%"></span>
-      </div>
-      <div class="macros">
-        ${MACROS.map((m) => {
-          const g = total(m.cle)
-          const cible = objectif[m.cle] || 1
-          return `<div class="macro">
-            <div class="macro__tete">
-              <span class="pastille pastille--${m.cle}"></span>${m.nom}
-            </div>
-            <div class="macro__val">
-              <span class="chiffre">${r0(g)}</span><span class="unite">/${r0(cible)} g</span>
-            </div>
-            <div class="macro__piste">
-              <span class="macro__jauge macro__jauge--${m.cle}"
-                    style="width:${Math.min(100, (g / cible) * 100)}%"></span>
-            </div>
-          </div>`
-        }).join('')}
-      </div>
-    </section>`)
+/** Compteur qui monte — easing cubique, et rien du tout si l'OS demande du calme. */
+function animerNombre(cible: HTMLElement, de: number, vers: number) {
+  if (doux || de === vers) { cible.textContent = r0(vers); return }
+  const debut = performance.now()
+  const duree = 550
+  const pas = (t: number) => {
+    const p = Math.min(1, (t - debut) / duree)
+    const e = 1 - Math.pow(1 - p, 3)
+    cible.textContent = r0(de + (vers - de) * e)
+    if (p < 1) requestAnimationFrame(pas)
+  }
+  requestAnimationFrame(pas)
 }
 
-function sectionRepas(repas: { cle: string; nom: string }) {
-  const mes = lignes.filter((l) => l.repas === repas.cle)
+/* ── La couronne du jour ───────────────────────────────────────────
+   Plus d'objectif : rien à « atteindre », donc rien à jauger. Ce qui reste
+   intéressant, c'est la composition — d'où un anneau de répartition plutôt
+   qu'une barre de progression. */
+const RAYON = 54
+const CIRCONF = 2 * Math.PI * RAYON
+const ECART = 5 // petit blanc entre deux segments
+
+function couronne() {
+  const kcal = total('kcal')
+  const parts = MACROS.map((m) => total(m.cle) * m.kcalParG)
+  const somme = parts.reduce((a, b) => a + b, 0)
+  // Les arcs suivent les kcal reconstituées (4/4/9) et non les kcal d'étiquette :
+  // c'est la seule façon d'avoir un anneau qui boucle exactement.
+  const arcs = somme ? parts.map((p) => (p / somme) * CIRCONF) : [0, 0, 0]
+
+  let depart = 0
+  const departs = arcs.map((a) => { const d = depart; depart += a; return d })
+
+  const node = el(`
+    <section class="jour ${somme ? '' : 'jour--vide'}">
+      <div class="couronne">
+        <svg viewBox="0 0 128 128" aria-hidden="true">
+          <circle class="arc arc--fond" cx="64" cy="64" r="${RAYON}"></circle>
+          ${MACROS.map((m, i) => `
+            <circle class="arc arc--${m.cle}" cx="64" cy="64" r="${RAYON}"
+                    data-arc="${i}" data-depart="${departs[i]}"></circle>`).join('')}
+        </svg>
+        <div class="couronne__centre">
+          <span class="chiffre chiffre--grand" data-kcal>0</span>
+          <span class="unite">kcal</span>
+        </div>
+      </div>
+
+      <ul class="repartition">
+        ${MACROS.map((m, i) => `
+          <li>
+            <span class="pastille pastille--${m.cle}"></span>
+            <span class="repartition__nom">${m.nom}</span>
+            <span class="repartition__g chiffre">${r0(total(m.cle))} g</span>
+            <span class="repartition__pc chiffre">${somme ? r0((parts[i] / somme) * 100) + ' %' : '—'}</span>
+          </li>`).join('')}
+        ${total('fibres') > 0 ? `
+          <li class="repartition--discret">
+            <span class="pastille pastille--fibres"></span>
+            <span class="repartition__nom">Fibres</span>
+            <span class="repartition__g chiffre">${r0(total('fibres'))} g</span>
+            <span class="repartition__pc"></span>
+          </li>` : ''}
+      </ul>
+    </section>`)
+
+  // Départ = état précédent, puis on laisse la transition CSS faire le trajet.
+  const cercles = [...node.querySelectorAll<SVGCircleElement>('[data-arc]')]
+  const poser = (valeurs: number[]) => {
+    let d = 0
+    cercles.forEach((c, i) => {
+      const visible = Math.max(0, valeurs[i] - ECART)
+      c.style.strokeDasharray = `${visible} ${CIRCONF - visible}`
+      c.style.strokeDashoffset = `${-(d + ECART / 2)}`
+      d += valeurs[i]
+    })
+  }
+  poser(doux ? arcs : precedent.arcs)
+  if (!doux) requestAnimationFrame(() => requestAnimationFrame(() => poser(arcs)))
+
+  animerNombre(node.querySelector<HTMLElement>('[data-kcal]')!, precedent.kcal, kcal)
+  precedent = { kcal, arcs }
+  return node
+}
+
+/* ── Repas ────────────────────────────────────────────────────────── */
+
+function sectionRepas(r: Repas | { id: null; ordre: number }, rang: number) {
+  const mes = r.id === null ? [] : lignes.filter((l) => l.repas_id === r.id)
   const kcal = mes.reduce((s, l) => s + l.kcal, 0)
 
   const node = el(`
-    <section class="repas">
+    <section class="repas ${animerLignes ? 'repas--entre' : ''}" style="--rang:${rang}">
       <header class="repas__tete">
-        <h2>${repas.nom}</h2>
-        <span class="repas__kcal">${mes.length ? r0(kcal) + ' kcal' : ''}</span>
+        <h2>Repas ${rang + 1}</h2>
+        ${mes.length ? `<span class="repas__kcal chiffre">${r0(kcal)} kcal</span>` : ''}
+        ${r.id === null ? '' : `<button class="repas__suppr" data-suppr aria-label="Supprimer le repas ${rang + 1}">×</button>`}
       </header>
       <ul class="lignes">
-        ${mes.map((l) => `
-          <li class="ligne">
+        ${mes.map((l, i) => `
+          <li class="ligne" style="--rang:${i}">
             <span class="ligne__nom">${esc(l.nom)}</span>
             <span class="ligne__g chiffre">${r0(l.grammes)} g</span>
             <span class="ligne__kcal chiffre">${r0(l.kcal)}</span>
             <button class="retirer" data-id="${l.id}" aria-label="Retirer ${esc(l.nom)}">×</button>
           </li>`).join('')}
       </ul>
-      <button class="ajouter" data-repas="${repas.cle}">+ Ajouter un aliment</button>
+      <button class="ajouter">+ Ajouter un aliment</button>
     </section>`)
 
   node.querySelectorAll<HTMLButtonElement>('.retirer').forEach((b) => {
     b.onclick = async () => {
+      animerLignes = false
       await call('supprimer', { id: Number(b.dataset.id) })
       charger()
     }
   })
   node.querySelector<HTMLButtonElement>('.ajouter')!.onclick = () =>
-    ouvrir({ type: 'recherche', repas: repas.cle })
+    ouvrir({ type: 'recherche', repas: r.id })
+  node.querySelector<HTMLButtonElement>('[data-suppr]')?.addEventListener('click', async () => {
+    if (mes.length && !confirm(`Supprimer le repas ${rang + 1} et ses ${mes.length} aliment(s) ?`)) return
+    animerLignes = false
+    await call('supprimerRepas', { id: r.id })
+    charger()
+  })
   return node
 }
 
@@ -162,7 +210,7 @@ function feuille(corps: string, titre: string) {
   return node
 }
 
-function panneauRecherche(repas: string) {
+function panneauRecherche(repas: number | null) {
   const node = feuille(`
     <header class="feuille__tete">
       <h2>Choisir un aliment</h2>
@@ -205,7 +253,7 @@ function panneauRecherche(repas: string) {
   return node
 }
 
-function panneauQuantite(repas: string, ing: Ing) {
+function panneauQuantite(repas: number | null, ing: Ing) {
   const portions: { label: string; g: number }[] = JSON.parse(ing.portions_json || '[]')
 
   const node = feuille(`
@@ -236,8 +284,9 @@ function panneauQuantite(repas: string, ing: Ing) {
   const valider = async () => {
     const grammes = parseFloat(champ.value)
     if (!(grammes > 0)) return
-    await call('ajouter', { jour, repas, ing, grammes })
     modale = null
+    animerLignes = false
+    await call('ajouter', { jour, repas_id: repas, ing, grammes })
     charger()
   }
 
@@ -252,64 +301,6 @@ function panneauQuantite(repas: string, ing: Ing) {
   node.querySelector<HTMLButtonElement>('.valider')!.onclick = valider
   node.querySelector<HTMLButtonElement>('[data-retour]')!.onclick = () =>
     ouvrir({ type: 'recherche', repas })
-  return node
-}
-
-/** Les objectifs sont datés : on écrit une nouvelle ligne valable à partir du
-    jour affiché, ce qui laisse les journées passées telles qu'elles étaient. */
-function panneauObjectifs() {
-  const champs = [
-    { cle: 'kcal', nom: 'Calories', unite: 'kcal' },
-    { cle: 'proteines', nom: 'Protéines', unite: 'g' },
-    { cle: 'glucides', nom: 'Glucides', unite: 'g' },
-    { cle: 'lipides', nom: 'Lipides', unite: 'g' },
-  ] as const
-
-  const node = feuille(`
-    <header class="feuille__tete">
-      <h2>Objectifs journaliers</h2>
-      <button data-fermer aria-label="Fermer">×</button>
-    </header>
-    <p class="note">Appliqués à partir du ${esc(dateFr(jour))}. Les journées antérieures gardent
-       les objectifs qu'elles avaient — l'historique n'est pas réécrit.</p>
-    <div class="reglages">
-      ${champs.map((c) => `
-        <label class="reglage">
-          <span>${c.nom}</span>
-          <span class="reglage__saisie">
-            <input type="number" min="0" step="1" data-cle="${c.cle}" value="${r0(objectif[c.cle])}">
-            <span class="unite">${c.unite}</span>
-          </span>
-        </label>`).join('')}
-    </div>
-    <div class="calcul"><span data-atwater></span></div>
-    <button class="valider">Enregistrer</button>`, 'Objectifs journaliers')
-
-  const entrees = [...node.querySelectorAll<HTMLInputElement>('input[data-cle]')]
-  const lu = () => Object.fromEntries(
-    entrees.map((i) => [i.dataset.cle, Math.max(0, parseFloat(i.value) || 0)]),
-  ) as unknown as Objectif
-
-  // Un garde-fou, pas une contrainte : on affiche l'écart, on ne l'impose pas.
-  const atwater = node.querySelector<HTMLSpanElement>('[data-atwater]')!
-  const rafraichir = () => {
-    const o = lu()
-    const somme = 4 * o.proteines + 4 * o.glucides + 9 * o.lipides
-    const ecart = somme - o.kcal
-    atwater.textContent = Math.abs(ecart) < 25
-      ? `P/G/L ≈ ${r0(somme)} kcal — cohérent`
-      : `P/G/L = ${r0(somme)} kcal, soit ${ecart > 0 ? '+' : ''}${r0(ecart)} vs la cible calories`
-    atwater.className = Math.abs(ecart) < 25 ? '' : 'ecart'
-  }
-  entrees.forEach((i) => { i.oninput = rafraichir })
-  rafraichir()
-  setTimeout(() => entrees[0].focus(), 30)
-
-  node.querySelector<HTMLButtonElement>('.valider')!.onclick = async () => {
-    await call('objectif', { depuis: jour, ...lu() })
-    modale = null
-    charger()
-  }
   return node
 }
 
@@ -329,28 +320,32 @@ function panneauCopier() {
         <span class="reglage__saisie"><input type="date" data-depuis value="${iso(veille)}" max="${jour}"></span>
       </label>
     </div>
-    <p class="note">Vers le ${esc(dateFr(jour))}. Quel repas ?</p>
-    <div class="portions">
-      ${REPAS.map((r) => `<button class="portion" data-repas="${r.cle}">${r.nom}</button>`).join('')}
-    </div>
-    <p class="note" data-retour-info></p>`, 'Recopier un repas')
+    <ul class="resultats" data-liste></ul>`, 'Recopier un repas')
 
   const depuis = node.querySelector<HTMLInputElement>('[data-depuis]')!
-  const info = node.querySelector<HTMLParagraphElement>('[data-retour-info]')!
+  const liste = node.querySelector<HTMLUListElement>('[data-liste]')!
 
-  node.querySelectorAll<HTMLButtonElement>('.portion').forEach((b) => {
-    b.onclick = async () => {
-      const { copiees } = await call<{ copiees: number }>('copier', {
-        depuis: depuis.value, vers: jour, repas: b.dataset.repas,
-      })
-      if (!copiees) {
-        info.textContent = `Rien à recopier : ce repas était vide le ${dateFr(depuis.value)}.`
-        return
+  const rafraichir = async () => {
+    const repas = await call<Apercu[]>('apercuJour', { jour: depuis.value })
+    const pleins = repas.filter((r) => r.n > 0)
+    liste.innerHTML = pleins.length
+      ? pleins.map((r, i) => `<li><button data-id="${r.id}">
+            <span>Repas ${i + 1}<br><small class="apercu">${esc(r.apercu ?? '')}</small></span>
+            <span class="apercu chiffre">${r0(r.kcal)} kcal</span>
+          </button></li>`).join('')
+      : `<li class="vide">Aucun repas le ${esc(dateFr(depuis.value))}.</li>`
+
+    liste.querySelectorAll<HTMLButtonElement>('button').forEach((b) => {
+      b.onclick = async () => {
+        modale = null
+        animerLignes = false
+        await call('copier', { repas_id: Number(b.dataset.id), vers: jour })
+        charger()
       }
-      modale = null
-      charger()
-    }
-  })
+    })
+  }
+  depuis.onchange = rafraichir
+  rafraichir()
   return node
 }
 
@@ -359,19 +354,25 @@ function panneau() {
   switch (modale.type) {
     case 'recherche': return panneauRecherche(modale.repas)
     case 'quantite': return panneauQuantite(modale.repas, modale.ing)
-    case 'objectifs': return panneauObjectifs()
     case 'copier': return panneauCopier()
   }
 }
 
 /* ── Chrome ──────────────────────────────────────────────────────── */
 
+function allerAu(j: string) {
+  if (j === jour) return
+  jour = j
+  precedent = { kcal: 0, arcs: [0, 0, 0] } // la nouvelle journée se dessine depuis zéro
+  animerLignes = true
+  charger()
+}
+
 function glisserJour(n: number) {
   const d = new Date(jour + 'T12:00:00')
   d.setDate(d.getDate() + n)
   if (n > 0 && d > new Date()) return // pas de repas dans le futur
-  jour = iso(d)
-  charger()
+  allerAu(iso(d))
 }
 
 function enTete() {
@@ -389,8 +390,18 @@ function enTete() {
     </header>`)
   node.querySelector<HTMLButtonElement>('[data-dec]')!.onclick = () => glisserJour(-1)
   node.querySelector<HTMLButtonElement>('[data-inc]')!.onclick = () => glisserJour(1)
-  node.querySelector<HTMLButtonElement>('[data-aujourdhui]')!.onclick = () => {
-    jour = iso(new Date())
+  node.querySelector<HTMLButtonElement>('[data-aujourdhui]')!.onclick = () => allerAu(iso(new Date()))
+  return node
+}
+
+function nouveauRepas() {
+  const node = el(`<button class="nouveau-repas">+ Ajouter un repas</button>`)
+  node.onclick = async () => {
+    animerLignes = false
+    // Le « Repas 1 » d'une journée vide n'existe pas encore en base : on le
+    // matérialise avant d'en créer un second, sinon il disparaîtrait à l'écran.
+    if (!repasDuJour.length) await call('creerRepas', { jour })
+    await call('creerRepas', { jour })
     charger()
   }
   return node
@@ -399,14 +410,12 @@ function enTete() {
 function pied() {
   const node = el(`
     <footer class="pied">
-      <button data-objectifs>Objectifs</button>
       <button data-copier>Recopier un repas</button>
       <button data-export>Exporter</button>
       <button data-import>Restaurer</button>
       <input type="file" accept=".sqlite,.db" hidden data-fichier>
     </footer>`)
 
-  node.querySelector<HTMLButtonElement>('[data-objectifs]')!.onclick = () => ouvrir({ type: 'objectifs' })
   node.querySelector<HTMLButtonElement>('[data-copier]')!.onclick = () => ouvrir({ type: 'copier' })
 
   node.querySelector<HTMLButtonElement>('[data-export]')!.onclick = async () => {
@@ -428,6 +437,8 @@ function pied() {
       try {
         await call('importer', { octets: new Uint8Array(await f.arrayBuffer()) })
         ingredients = await call<Ing[]>('ingredients')
+        precedent = { kcal: 0, arcs: [0, 0, 0] }
+        animerLignes = true
         await charger()
       } catch (err: any) {
         alert(`Restauration impossible : ${err?.message ?? err}\nLa base actuelle est intacte.`)
@@ -439,14 +450,21 @@ function pied() {
 }
 
 function dessiner() {
+  // Une journée vierge montre quand même un « Repas 1 » : il se crée en base au
+  // premier aliment déposé dedans (repas_id null côté worker).
+  const cartes: (Repas | { id: null; ordre: number })[] =
+    repasDuJour.length ? repasDuJour : [{ id: null, ordre: 1 }]
+
   const p = panneau()
   app.replaceChildren(
     enTete(),
-    barre(),
-    ...REPAS.map(sectionRepas),
+    couronne(),
+    ...cartes.map(sectionRepas),
+    nouveauRepas(),
     pied(),
     ...(p ? [p] : []),
   )
+  animerLignes = false
 }
 
 document.addEventListener('keydown', (e) => {
@@ -464,12 +482,25 @@ document.addEventListener('keydown', (e) => {
     await navigator.storage?.persist?.()
     await charger()
   } catch (err: any) {
-    app.innerHTML = `<div class="panne">
-      <h2>La base n'a pas pu s'ouvrir</h2>
-      <p>${esc(err?.message ?? err)}</p>
-      <p>Cette app stocke tes repas dans le navigateur (OPFS). Une fenêtre privée
-         ou un navigateur trop ancien bloque ce stockage : réessaie dans un onglet
-         normal, sur une version récente de Chrome, Firefox ou Safari.</p>
-    </div>`
+    const message = String(err?.message ?? err)
+    // SQLite garde un verrou exclusif sur le fichier OPFS : un deuxième onglet
+    // ne peut pas l'ouvrir. Le message brut du navigateur n'aide personne.
+    const dejaOuvert = /Access Handle/i.test(message)
+
+    app.replaceChildren(el(`
+      <div class="panne">
+        <h2>${dejaOuvert ? 'Déjà ouverte dans un autre onglet' : "La base n'a pas pu s'ouvrir"}</h2>
+        ${dejaOuvert
+          ? `<p>Tes repas vivent dans un fichier SQLite que l'app verrouille en
+               exclusivité — un seul onglet à la fois. Ferme les autres onglets
+               de Macros, puis recharge.</p>`
+          : `<p>Cette app stocke tes repas dans le navigateur (OPFS). Une fenêtre
+               privée ou un navigateur trop ancien bloque ce stockage : réessaie
+               dans un onglet normal, sur une version récente de Chrome, Firefox
+               ou Safari.</p>`}
+        <p class="panne__detail">${esc(message)}</p>
+        <button class="valider" data-recharger>Recharger</button>
+      </div>`))
+    app.querySelector<HTMLButtonElement>('[data-recharger]')!.onclick = () => location.reload()
   }
 })()

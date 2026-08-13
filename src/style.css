@@ -1,22 +1,24 @@
 /* Trois macros, trois couleurs, utilisées partout et nulle part ailleurs :
    la couleur porte l'information, elle ne décore pas. Aucune webfont —
-   l'app doit démarrer hors ligne, et iOS a déjà tout ce qu'il faut. */
+   la page doit s'afficher instantanément et le système a déjà tout. */
 
 :root {
-  --fond: #171b22;
-  --carte: #1e242e;
-  --trait: #2c3441;
-  --texte: #e4e9f0;
-  --sourdine: #7e8b9e;
+  --fond: #14181f;
+  --carte: #1b212b;
+  --carte-haut: #212936;
+  --trait: #2b3442;
+  --texte: #e6ebf3;
+  --sourdine: #808fa4;
 
   --proteines: #4fc3a1;
   --glucides: #e8a33d;
   --lipides: #e8687e;
-  --alerte: #ff8a5c;
+  --fibres: #7f93b8;
 
   --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
   --texte-face: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  --rayon: 12px;
+  --rayon: 16px;
+  --ressort: cubic-bezier(0.22, 0.9, 0.24, 1);
 }
 
 * { box-sizing: border-box; margin: 0; }
@@ -26,10 +28,13 @@ body {
   color: var(--texte);
   font-family: var(--texte-face);
   -webkit-font-smoothing: antialiased;
-  padding: env(safe-area-inset-top) 0 env(safe-area-inset-bottom);
+  /* Une lueur très basse, juste pour que le fond ne soit pas plat. */
+  background-image:
+    radial-gradient(60rem 28rem at 50% -12rem, rgba(79, 195, 161, 0.07), transparent 70%);
+  background-attachment: fixed;
 }
 
-#app { max-width: 34rem; margin: 0 auto; padding: 0 1rem 3rem; }
+#app { max-width: 36rem; margin: 0 auto; padding: 0 1rem 4rem; }
 
 .chiffre { font-family: var(--mono); font-variant-numeric: tabular-nums; font-weight: 600; }
 .unite { color: var(--sourdine); font-size: 0.8rem; margin-left: 0.25rem; }
@@ -39,17 +44,24 @@ button {
   cursor: pointer; -webkit-tap-highlight-color: transparent;
 }
 button:focus-visible, input:focus-visible {
-  outline: 2px solid var(--proteines); outline-offset: 2px;
+  outline: 2px solid var(--proteines); outline-offset: 2px; border-radius: 6px;
 }
 button:disabled { opacity: 0.25; cursor: default; }
+
+.pastille { width: 8px; height: 8px; border-radius: 50%; display: inline-block; flex: none; }
+.pastille--proteines { background: var(--proteines); }
+.pastille--glucides { background: var(--glucides); }
+.pastille--lipides { background: var(--lipides); }
+.pastille--fibres { background: var(--fibres); }
 
 /* ── Bandeau de date ── */
 .bandeau {
   display: flex; align-items: center; justify-content: space-between;
-  padding: 1.25rem 0 1rem;
+  padding: 1.5rem 0 1.25rem;
 }
 .bandeau > button { font-size: 1.6rem; color: var(--sourdine); padding: 0 0.75rem; }
-.bandeau__date { text-align: center; padding: 0.15rem 0.6rem; border-radius: 8px; }
+.bandeau > button:not(:disabled):hover { color: var(--texte); }
+.bandeau__date { text-align: center; padding: 0.2rem 0.7rem; border-radius: 10px; transition: background 0.15s; }
 /* capitalize mettrait aussi « Août » en majuscule : en français, seule
    l'initiale de la phrase prend la capitale. */
 .bandeau__date strong { display: block; font-size: 1.05rem; }
@@ -59,99 +71,165 @@ button:disabled { opacity: 0.25; cursor: default; }
 .bandeau__date:disabled { opacity: 1; }
 .bandeau__date:not(:disabled):hover { background: var(--carte); }
 
-/* ── La jauge du jour ── */
-.jauge { background: var(--carte); border-radius: var(--rayon); padding: 1.1rem; }
-.jauge__tete { display: flex; align-items: baseline; justify-content: space-between; }
-.chiffre--grand { font-size: 2.4rem; letter-spacing: -0.02em; }
-.reste { font-size: 0.82rem; color: var(--sourdine); }
-.reste--depasse { color: var(--alerte); }
-
-.piste {
-  position: relative; display: flex; height: 10px; margin: 0.9rem 0 1.2rem;
-  background: #12161c; border-radius: 5px; overflow: hidden;
+/* ── La couronne du jour ──────────────────────────────────────────
+   Pas d'objectif, donc pas de barre de progression : ce qui se lit ici,
+   c'est la répartition. */
+.jour {
+  position: relative;
+  display: grid; grid-template-columns: auto 1fr; gap: 1.75rem; align-items: center;
+  background: linear-gradient(160deg, var(--carte-haut), var(--carte));
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: var(--rayon);
+  padding: 1.5rem 1.6rem;
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.03) inset, 0 12px 32px -18px rgba(0, 0, 0, 0.9);
+  overflow: hidden;
 }
-.seg { transition: width 0.35s cubic-bezier(0.2, 0.8, 0.2, 1); }
-.seg--proteines { background: var(--proteines); }
-.seg--glucides { background: var(--glucides); }
-.seg--lipides { background: var(--lipides); }
-.cran {
-  position: absolute; top: -3px; bottom: -3px; width: 2px;
-  background: var(--texte); opacity: 0.55;
+/* Halo derrière l'anneau — décoratif, très discret, coupé par overflow. */
+.jour::before {
+  content: ''; position: absolute; left: -3rem; top: -4rem;
+  width: 16rem; height: 16rem; border-radius: 50%;
+  background: radial-gradient(circle, rgba(79, 195, 161, 0.13), transparent 65%);
+  pointer-events: none;
 }
 
-.macros { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.9rem; }
-.macro__tete { font-size: 0.74rem; color: var(--sourdine); display: flex; align-items: center; gap: 0.35rem; }
-.macro__val { margin: 0.15rem 0 0.4rem; }
-.macro__val .chiffre { font-size: 1.05rem; }
-.macro__piste { height: 3px; background: #12161c; border-radius: 2px; overflow: hidden; }
-.macro__jauge { display: block; height: 100%; transition: width 0.35s; }
-.macro__jauge--proteines { background: var(--proteines); }
-.macro__jauge--glucides { background: var(--glucides); }
-.macro__jauge--lipides { background: var(--lipides); }
+.couronne { position: relative; width: 128px; height: 128px; flex: none; }
+.couronne svg { width: 100%; height: 100%; transform: rotate(-90deg); display: block; }
+.arc { fill: none; stroke-width: 13; stroke-linecap: butt; }
+.arc--fond { stroke: rgba(255, 255, 255, 0.06); }
+.arc--proteines { stroke: var(--proteines); }
+.arc--glucides { stroke: var(--glucides); }
+.arc--lipides { stroke: var(--lipides); }
+.arc:not(.arc--fond) {
+  transition: stroke-dasharray 0.7s var(--ressort), stroke-dashoffset 0.7s var(--ressort);
+}
 
-.pastille { width: 7px; height: 7px; border-radius: 50%; display: inline-block; }
-.pastille--proteines { background: var(--proteines); }
-.pastille--glucides { background: var(--glucides); }
-.pastille--lipides { background: var(--lipides); }
+.couronne__centre {
+  position: absolute; inset: 0;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+}
+.chiffre--grand { font-size: 2.1rem; letter-spacing: -0.03em; line-height: 1; }
+.couronne__centre .unite { margin: 0.25rem 0 0; font-size: 0.72rem; letter-spacing: 0.05em; }
+
+.repartition { list-style: none; padding: 0; margin: 0; display: grid; gap: 0.55rem; }
+.repartition li {
+  display: grid; grid-template-columns: auto 1fr auto auto; gap: 0.6rem;
+  align-items: center; font-size: 0.88rem;
+}
+.repartition__nom { color: var(--sourdine); }
+.repartition__g { font-size: 0.95rem; }
+.repartition__pc {
+  color: var(--sourdine); font-size: 0.78rem; min-width: 3.2rem; text-align: right;
+}
+.repartition--discret { opacity: 0.6; font-size: 0.82rem; }
+.jour--vide .repartition { opacity: 0.45; }
+
+@media (max-width: 30rem) {
+  .jour { grid-template-columns: 1fr; justify-items: center; gap: 1.25rem; }
+  .repartition { width: 100%; }
+}
 
 /* ── Repas ── */
-.repas { margin-top: 1.5rem; }
-.repas__tete { display: flex; justify-content: space-between; align-items: baseline; }
-.repas__tete h2 { font-size: 0.8rem; font-weight: 600; letter-spacing: 0.07em; text-transform: uppercase; color: var(--sourdine); }
-.repas__kcal { font-family: var(--mono); font-size: 0.78rem; color: var(--sourdine); }
+.repas { margin-top: 1.75rem; }
+.repas__tete {
+  display: flex; align-items: baseline; gap: 0.75rem;
+  padding-bottom: 0.35rem; border-bottom: 1px solid var(--trait);
+}
+.repas__tete h2 {
+  font-size: 0.76rem; font-weight: 600; letter-spacing: 0.09em;
+  text-transform: uppercase; color: var(--sourdine); flex: 1;
+}
+.repas__kcal { font-size: 0.8rem; color: var(--texte); }
+.repas__suppr {
+  color: var(--sourdine); font-size: 1.1rem; line-height: 1; opacity: 0.35;
+  transition: opacity 0.15s, color 0.15s; align-self: center;
+}
+.repas__suppr:hover, .repas__suppr:focus-visible { opacity: 1; color: var(--lipides); }
 
-.lignes { list-style: none; padding: 0; margin: 0.5rem 0 0; }
+.lignes { list-style: none; padding: 0; margin: 0; }
 .ligne {
   display: grid; grid-template-columns: 1fr auto auto 1.75rem;
   gap: 0.75rem; align-items: center;
-  padding: 0.6rem 0; border-bottom: 1px solid var(--trait);
+  padding: 0.65rem 0.5rem; margin: 0 -0.5rem;
+  border-bottom: 1px solid rgba(43, 52, 66, 0.55);
+  border-radius: 8px; transition: background 0.15s;
 }
-.ligne__nom { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 0.92rem; }
+.ligne:hover { background: rgba(255, 255, 255, 0.025); }
+.ligne__nom { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 0.93rem; }
 .ligne__g { color: var(--sourdine); font-size: 0.82rem; }
 .ligne__kcal { font-size: 0.88rem; min-width: 3ch; text-align: right; }
-.retirer { color: var(--sourdine); font-size: 1.2rem; line-height: 1; }
-.retirer:hover { color: var(--lipides); }
+.retirer {
+  color: var(--sourdine); font-size: 1.2rem; line-height: 1; opacity: 0.3;
+  transition: opacity 0.15s, color 0.15s;
+}
+.ligne:hover .retirer { opacity: 0.7; }
+.retirer:hover, .retirer:focus-visible { opacity: 1; color: var(--lipides); }
 
 .ajouter {
-  width: 100%; text-align: left; padding: 0.7rem 0;
-  color: var(--sourdine); font-size: 0.88rem;
+  width: 100%; text-align: left; padding: 0.75rem 0.5rem; margin: 0 -0.5rem;
+  color: var(--sourdine); font-size: 0.88rem; border-radius: 8px;
+  transition: color 0.15s, background 0.15s;
 }
-.ajouter:hover { color: var(--proteines); }
+.ajouter:hover { color: var(--proteines); background: rgba(79, 195, 161, 0.06); }
+
+.nouveau-repas {
+  width: 100%; margin-top: 1.5rem; padding: 0.85rem;
+  border: 1px dashed var(--trait); border-radius: 12px;
+  color: var(--sourdine); font-size: 0.86rem;
+  transition: border-color 0.18s, color 0.18s, background 0.18s;
+}
+.nouveau-repas:hover {
+  border-color: var(--proteines); color: var(--texte);
+  background: rgba(79, 195, 161, 0.05);
+}
+
+/* ── Entrées en scène ── */
+@keyframes monteFade { from { opacity: 0; transform: translateY(10px); } }
+.repas--entre { animation: monteFade 0.4s var(--ressort) backwards; animation-delay: calc(var(--rang) * 60ms); }
+.repas--entre .ligne { animation: monteFade 0.35s var(--ressort) backwards; animation-delay: calc(var(--rang) * 30ms + 120ms); }
 
 /* ── Feuille de saisie ── */
 .voile {
-  position: fixed; inset: 0; background: rgba(10, 12, 16, 0.72);
+  position: fixed; inset: 0; background: rgba(9, 11, 15, 0.7);
   display: flex; align-items: flex-end; justify-content: center;
-  backdrop-filter: blur(6px);
+  backdrop-filter: blur(7px);
+  animation: fondu 0.2s ease;
 }
+@keyframes fondu { from { opacity: 0; } }
 .feuille {
   background: var(--carte); width: 100%; max-width: 34rem;
+  border: 1px solid rgba(255, 255, 255, 0.06);
   border-radius: var(--rayon) var(--rayon) 0 0;
-  padding: 1rem 1rem calc(1rem + env(safe-area-inset-bottom));
+  padding: 1.1rem;
   max-height: 86vh; display: flex; flex-direction: column;
-  animation: monte 0.22s cubic-bezier(0.2, 0.9, 0.25, 1);
+  box-shadow: 0 -20px 60px -20px rgba(0, 0, 0, 0.8);
+  animation: monte 0.26s var(--ressort);
 }
+
 /* Sur un écran large, la feuille remonte au centre : une boîte de dialogue,
    pas un tiroir de téléphone. */
 @media (min-width: 40rem) {
   .voile { align-items: center; padding: 2rem 1rem; }
-  .feuille { border-radius: var(--rayon); max-height: 78vh; padding-bottom: 1rem; }
+  .feuille { border-radius: var(--rayon); max-height: 78vh; }
 }
 
 @keyframes monte { from { transform: translateY(18px); opacity: 0; } }
 @media (prefers-reduced-motion: reduce) {
-  .feuille { animation: none; }
-  .seg, .macro__jauge { transition: none; }
+  .feuille, .voile, .repas--entre, .repas--entre .ligne { animation: none; }
+  .arc:not(.arc--fond) { transition: none; }
 }
 
 .feuille__tete { display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.9rem; }
 .feuille__tete h2 { font-size: 1rem; flex: 1; }
 .feuille__tete button { color: var(--sourdine); font-size: 1.4rem; line-height: 1; }
+.feuille__tete button:hover { color: var(--texte); }
 
 .recherche, .quantite {
-  width: 100%; background: #12161c; border: 1px solid var(--trait);
-  border-radius: 9px; padding: 0.7rem 0.85rem; color: var(--texte); font-size: 16px;
+  width: 100%; background: #11151c; border: 1px solid var(--trait);
+  border-radius: 10px; padding: 0.7rem 0.85rem; color: var(--texte); font-size: 16px;
+  transition: border-color 0.15s;
 }
+.recherche:focus, .quantite:focus { border-color: var(--proteines); }
+
 /* padding-right : la barre de défilement se superpose sinon au « 22.5 P ». */
 .resultats {
   list-style: none; margin: 0.7rem 0 0; overflow-y: auto;
@@ -159,8 +237,12 @@ button:disabled { opacity: 0.25; cursor: default; }
 }
 .resultats button {
   width: 100%; display: flex; justify-content: space-between; gap: 1rem;
-  padding: 0.7rem 0; border-bottom: 1px solid var(--trait); text-align: left;
+  padding: 0.7rem 0.5rem; margin: 0 -0.5rem; border-radius: 8px;
+  border-bottom: 1px solid var(--trait); text-align: left;
+  transition: background 0.13s;
 }
+.resultats button:hover { background: rgba(255, 255, 255, 0.035); }
+.resultats small { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 20rem; }
 .categorie {
   font-size: 0.68rem; letter-spacing: 0.09em; text-transform: uppercase;
   color: var(--sourdine); opacity: 0.65; padding: 0.9rem 0 0.3rem;
@@ -172,48 +254,55 @@ button:disabled { opacity: 0.25; cursor: default; }
 .note { color: var(--sourdine); font-size: 0.8rem; margin-bottom: 0.8rem; }
 
 .pese { display: flex; align-items: baseline; gap: 0.5rem; }
-.pese .quantite { font-family: var(--mono); font-size: 1.6rem; font-weight: 600; }
+.pese .quantite { font-family: var(--mono); font-size: 1.7rem; font-weight: 600; }
 .portions { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.75rem; }
 .portion {
   border: 1px solid var(--trait); border-radius: 999px;
-  padding: 0.35rem 0.75rem; font-size: 0.8rem; color: var(--sourdine);
+  padding: 0.4rem 0.8rem; font-size: 0.8rem; color: var(--sourdine);
+  transition: border-color 0.15s, color 0.15s;
 }
 .portion:hover { border-color: var(--proteines); color: var(--texte); }
 
 .calcul {
   display: flex; gap: 1rem; align-items: center; flex-wrap: wrap;
-  margin: 1rem 0; font-size: 0.85rem; font-family: var(--mono); color: var(--sourdine);
+  margin: 1.1rem 0; font-size: 0.85rem; font-family: var(--mono); color: var(--sourdine);
 }
 .calcul span { display: flex; align-items: center; gap: 0.35rem; }
-.calcul strong { margin-left: auto; color: var(--texte); font-size: 1rem; }
+.calcul strong { margin-left: auto; color: var(--texte); font-size: 1.05rem; }
 
 .valider {
-  width: 100%; background: var(--proteines); color: #0d1116;
-  font-weight: 650; padding: 0.85rem; border-radius: 9px;
+  width: 100%; background: var(--proteines); color: #0b0f14;
+  font-weight: 650; padding: 0.9rem; border-radius: 11px;
+  transition: filter 0.15s, transform 0.1s;
 }
+.valider:hover { filter: brightness(1.08); }
+.valider:active { transform: scale(0.985); }
 
-/* ── Réglages (objectifs, recopie) ── */
-.reglages { display: grid; gap: 0.5rem; margin-bottom: 0.4rem; }
+/* ── Réglages (sélecteur de date de la recopie) ── */
+.reglages { display: grid; gap: 0.5rem; }
 .reglage {
   display: flex; align-items: center; justify-content: space-between; gap: 1rem;
   padding: 0.5rem 0; border-bottom: 1px solid var(--trait); font-size: 0.9rem;
 }
-.reglage__saisie { display: flex; align-items: baseline; gap: 0.35rem; }
 .reglage input {
-  width: 6rem; text-align: right; background: #12161c; border: 1px solid var(--trait);
-  border-radius: 8px; padding: 0.45rem 0.6rem; color: var(--texte);
-  font-family: var(--mono); font-size: 1rem; font-weight: 600;
+  background: #11151c; border: 1px solid var(--trait); border-radius: 8px;
+  padding: 0.45rem 0.6rem; color: var(--texte);
+  font-family: var(--mono); font-size: 0.95rem;
 }
-.calcul .ecart { color: var(--alerte); }
 
 /* ── Pied ── */
 .pied {
-  display: flex; flex-wrap: wrap; gap: 0.25rem 1.25rem; margin-top: 2.5rem;
+  display: flex; flex-wrap: wrap; gap: 0.25rem 1.5rem; margin-top: 3rem;
   padding-top: 1.25rem; border-top: 1px solid var(--trait);
 }
-.pied button { font-size: 0.78rem; color: var(--sourdine); }
+.pied button { font-size: 0.78rem; color: var(--sourdine); transition: color 0.15s; }
 .pied button:hover { color: var(--texte); }
 
-.panne { padding: 3rem 0; }
-.panne h2 { font-size: 1rem; margin-bottom: 0.75rem; }
-.panne p { color: var(--sourdine); font-size: 0.88rem; margin-bottom: 0.6rem; }
+.panne { padding: 4rem 0; max-width: 26rem; margin: 0 auto; }
+.panne h2 { font-size: 1.05rem; margin-bottom: 0.75rem; }
+.panne p { color: var(--sourdine); font-size: 0.88rem; margin-bottom: 0.9rem; line-height: 1.5; }
+.panne__detail {
+  font-family: var(--mono); font-size: 0.72rem; opacity: 0.5;
+  background: #11151c; border-radius: 8px; padding: 0.6rem 0.7rem;
+}
+.panne .valider { margin-top: 0.5rem; }

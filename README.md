@@ -101,13 +101,16 @@ qui est fausse.
 - **+ Ajouter un aliment** ouvre la liste. Tape pour filtrer, **Entrée** prend le
   premier résultat.
 - Saisis les grammes (ou clique une portion), **Entrée** valide. **Échap** ferme.
-- **Objectifs** règle les 4 cibles. Elles sont **datées** : elles s'appliquent à
-  partir du jour affiché et les journées passées gardent les leurs.
-- **Recopier un repas** rejoue un repas d'un autre jour. Sans ça, on tient deux
-  semaines.
+- **+ Ajouter un repas** en crée autant que tu veux. Ils sont juste numérotés —
+  Repas 1, Repas 2… — parce que « petit-déjeuner » ne veut rien dire quand on
+  mange à 15 h. Le **×** d'un repas le supprime avec son contenu, et les suivants
+  se renumérotent.
+- **Recopier un repas** rejoue un repas d'un autre jour, ajouté en fin de journée.
+  Sans ça, on tient deux semaines.
 
-La grosse barre, c'est la journée : sa largeur ce sont les kcal, ses segments
-d'où viennent ces kcal, le cran vertical marque l'objectif.
+**Pas d'objectifs, pas de cible à atteindre** : l'app totalise, elle ne juge pas.
+L'anneau montre donc la **répartition** — quelle part de tes calories vient des
+protéines, des glucides, des lipides — et le total en kcal est au centre.
 
 ---
 
@@ -168,9 +171,13 @@ C'est le vrai intérêt de garder ça en SQL plutôt que dans une app fermée.
 absolue, figées au moment de la saisie. Corriger un aliment en novembre ne
 réécrit pas tes journées de mars — c'est l'invariant central du projet.
 
-**Objectifs datés.** `objectif(depuis, …)` ; une journée résout
-`WHERE depuis <= jour ORDER BY depuis DESC LIMIT 1`. Tu changes de cap sans
-falsifier les journées passées.
+**Un repas n'a pas de nom.** Table `repas(id, jour, ordre)` ; le libellé
+« Repas N » est recalculé à partir du rang, donc supprimer un repas renumérote
+les suivants sans toucher à la base. `ordre` n'a pas besoin d'être contigu.
+
+**Un seul onglet à la fois.** SQLite verrouille son fichier OPFS en exclusivité :
+un deuxième onglet sur la même URL refusera de démarrer, avec un message qui le
+dit. Ferme l'autre et recharge.
 
 **VFS OPFS-SAHPool, dans un Worker.** Le VFS OPFS classique exige
 `SharedArrayBuffer`, donc des en-têtes COOP/COEP que GitHub Pages ne permet pas
