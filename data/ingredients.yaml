@@ -77,7 +77,7 @@
     - { label: "1 portion", g: 25 }
 
 - id: lait_ecreme
-  nom: Lait écrémé (ml)
+  nom: Lait écrémé (ml = g)
   categorie: proteines
   kcal: 34
   proteines: 3.3
