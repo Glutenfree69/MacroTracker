@@ -166,7 +166,24 @@ button:disabled { opacity: 0.25; cursor: default; }
   border-radius: 8px; transition: background 0.15s;
 }
 .ligne:hover { background: rgba(255, 255, 255, 0.025); }
-.ligne__nom { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 0.93rem; }
+.ligne__nom {
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 0.93rem;
+  text-align: left; transition: color 0.15s;
+}
+.ligne__nom:hover, .ligne__nom:focus-visible { color: var(--proteines); }
+.ligne__fleche {
+  display: inline-block; margin-left: 0.35rem; font-size: 0.7em; color: var(--sourdine);
+  transition: transform 0.15s;
+}
+.ligne--ouverte .ligne__fleche { transform: rotate(180deg); }
+.ligne__macros {
+  grid-column: 1 / -1; display: none; flex-wrap: wrap; list-style: none;
+  gap: 0.35rem 1.15rem; margin: 0.6rem 0 0; padding-top: 0.6rem;
+  border-top: 1px dashed var(--trait);
+}
+.ligne--ouverte .ligne__macros { display: flex; }
+.ligne__macros li { display: flex; align-items: center; gap: 0.4rem; font-size: 0.8rem; color: var(--sourdine); }
+.ligne__macros .chiffre { color: var(--texte); font-size: 0.82rem; }
 .ligne__g { color: var(--sourdine); font-size: 0.82rem; }
 .ligne__kcal { font-size: 0.88rem; min-width: 3ch; text-align: right; }
 .retirer {

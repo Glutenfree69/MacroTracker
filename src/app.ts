@@ -197,10 +197,18 @@ function sectionRepas(r: Repas | { id: null; ordre: number }, rang: number) {
       <ul class="lignes">
         ${mes.map((l, i) => `
           <li class="ligne" style="--rang:${i}">
-            <span class="ligne__nom">${esc(l.nom)}</span>
+            <button class="ligne__nom" data-detail aria-expanded="false">
+              ${esc(l.nom)}<span class="ligne__fleche" aria-hidden="true">⌄</span>
+            </button>
             <span class="ligne__g chiffre">${r0(l.grammes)} g</span>
             <span class="ligne__kcal chiffre">${r0(l.kcal)}</span>
             <button class="retirer" data-id="${l.id}" aria-label="Retirer ${esc(l.nom)}">×</button>
+            <ul class="ligne__macros">
+              <li><span class="pastille pastille--proteines"></span>Protéines <span class="chiffre">${l.proteines.toFixed(1)} g</span></li>
+              <li><span class="pastille pastille--glucides"></span>Glucides <span class="chiffre">${l.glucides.toFixed(1)} g</span></li>
+              <li><span class="pastille pastille--lipides"></span>Lipides <span class="chiffre">${l.lipides.toFixed(1)} g</span></li>
+              <li><span class="pastille pastille--fibres"></span>Fibres <span class="chiffre">${l.fibres.toFixed(1)} g</span></li>
+            </ul>
           </li>`).join('')}
       </ul>
       <button class="ajouter">+ Ajouter un aliment</button>
@@ -211,6 +219,12 @@ function sectionRepas(r: Repas | { id: null; ordre: number }, rang: number) {
       animerLignes = false
       await call('supprimer', { id: Number(b.dataset.id) })
       charger()
+    }
+  })
+  node.querySelectorAll<HTMLButtonElement>('[data-detail]').forEach((b) => {
+    b.onclick = () => {
+      const ouvert = b.closest('.ligne')!.classList.toggle('ligne--ouverte')
+      b.setAttribute('aria-expanded', String(ouvert))
     }
   })
   node.querySelector<HTMLButtonElement>('.ajouter')!.onclick = () =>
