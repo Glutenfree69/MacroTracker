@@ -217,9 +217,12 @@ const ops: Record<string, (a: any) => any> = {
     return { copiees }
   },
 
-  joursRecents: () =>
-    exec(`SELECT jour, COUNT(*) n, ROUND(SUM(kcal)) kcal FROM ligne
-          GROUP BY jour ORDER BY jour DESC LIMIT 30`),
+  /** Résumé jour par jour sur un intervalle — sert la grille du calendrier. */
+  joursEntre: ({ debut, fin }: { debut: string; fin: string }) =>
+    exec(
+      `SELECT jour, COUNT(*) n, ROUND(SUM(kcal)) kcal FROM ligne
+       WHERE jour BETWEEN ? AND ? GROUP BY jour`, [debut, fin],
+    ),
 
   /** Le fichier .sqlite brut — à archiver, ou à ouvrir avec `sqlite3` sur le Mac. */
   exporter: () => pool.exportFile('/macros.sqlite'),

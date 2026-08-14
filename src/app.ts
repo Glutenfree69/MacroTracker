@@ -58,6 +58,10 @@ let repasDuJour: Repas[] = []
 let poidsDuJour: number | null = null
 let modale: Modale | null = null
 
+type JourActif = { n: number; kcal: number }
+let moisAffiche = jour.slice(0, 7) // 'YYYY-MM'
+let joursActifsMois = new Map<string, JourActif>()
+
 // D'où repartent les animations : la couronne et le compteur glissent de l'état
 // précédent vers le nouveau au lieu de sauter. Remis à zéro quand on change de
 // jour, pour que la journée se dessine.
@@ -403,6 +407,10 @@ function panneau() {
 function allerAu(j: string) {
   if (j === jour) return
   jour = j
+  if (jour.slice(0, 7) !== moisAffiche) {
+    moisAffiche = jour.slice(0, 7)
+    chargerMoisCalendrier()
+  }
   precedent = { kcal: 0, arcs: [0, 0, 0] } // la nouvelle journée se dessine depuis zéro
   animerLignes = true
   charger()
@@ -413,6 +421,78 @@ function glisserJour(n: number) {
   d.setDate(d.getDate() + n)
   if (n > 0 && d > new Date()) return // pas de repas dans le futur
   allerAu(iso(d))
+}
+
+/* ── Calendrier ──────────────────────────────────────────────────── */
+
+/** Semaine lundi->dimanche, toujours paddée à 42 cases (6 semaines) : une
+    hauteur stable d'un mois à l'autre, le widget est centré verticalement. */
+function grilleMois(mois: string): (string | null)[] {
+  const [y, m] = mois.split('-').map(Number)
+  const decalage = (new Date(y, m - 1, 1).getDay() + 6) % 7 // getDay(): 0=dim -> lundi=0
+  const nbJours = new Date(y, m, 0).getDate()
+
+  const cases: (string | null)[] = Array(decalage).fill(null)
+  for (let j = 1; j <= nbJours; j++) cases.push(`${mois}-${String(j).padStart(2, '0')}`)
+  while (cases.length < 42) cases.push(null)
+  return cases
+}
+
+async function chargerMoisCalendrier() {
+  const cible = moisAffiche
+  const [y, m] = cible.split('-').map(Number)
+  const debut = `${cible}-01`
+  const fin = `${cible}-${String(new Date(y, m, 0).getDate()).padStart(2, '0')}`
+  const res = await call<{ jour: string; n: number; kcal: number }[]>('joursEntre', { debut, fin })
+  if (cible !== moisAffiche) return // le mois a changé pendant le chargement, résultat périmé
+  joursActifsMois = new Map(res.map((l) => [l.jour, { n: l.n, kcal: l.kcal }]))
+  dessiner()
+}
+
+function changerMois(n: number) {
+  const [y, m] = moisAffiche.split('-').map(Number)
+  const d = new Date(y, m - 1 + n, 1)
+  const cible = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
+  if (cible > iso(new Date()).slice(0, 7)) return // pas de mois futur
+  moisAffiche = cible
+  chargerMoisCalendrier()
+}
+
+function calendrier() {
+  const auj = iso(new Date())
+  const cases = grilleMois(moisAffiche)
+  const [y, m] = moisAffiche.split('-').map(Number)
+  const libelleMois = new Date(y, m - 1, 1).toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' })
+  const estMoisCourant = moisAffiche === auj.slice(0, 7)
+
+  const node = el(`
+    <aside class="calendrier" aria-label="Calendrier">
+      <header class="calendrier__tete">
+        <button data-mois-dec aria-label="Mois précédent">‹</button>
+        <strong>${libelleMois}</strong>
+        <button data-mois-inc aria-label="Mois suivant" ${estMoisCourant ? 'disabled' : ''}>›</button>
+      </header>
+      <div class="calendrier__jours-noms">${['L', 'M', 'M', 'J', 'V', 'S', 'D'].map((j) => `<span>${j}</span>`).join('')}</div>
+      <div class="calendrier__grille">
+        ${cases.map((j) => {
+          if (!j) return `<span class="calendrier__case calendrier__case--vide"></span>`
+          const actif = j === jour, estAuj = j === auj, futur = j > auj
+          const logge = joursActifsMois.has(j)
+          return `<button class="calendrier__case ${actif ? 'calendrier__case--actif' : ''} ${estAuj && !actif ? 'calendrier__case--auj' : ''}"
+                    data-jour="${j}" ${futur ? 'disabled' : ''} aria-current="${estAuj ? 'date' : 'false'}"
+                    aria-label="${esc(dateFr(j))}${logge ? ', repas loggés' : ''}">
+                    ${Number(j.slice(8))}${logge ? '<span class="calendrier__pastille"></span>' : ''}
+                  </button>`
+        }).join('')}
+      </div>
+    </aside>`)
+
+  node.querySelector<HTMLButtonElement>('[data-mois-dec]')!.onclick = () => changerMois(-1)
+  node.querySelector<HTMLButtonElement>('[data-mois-inc]')!.onclick = () => changerMois(1)
+  node.querySelectorAll<HTMLButtonElement>('[data-jour]').forEach((b) => {
+    b.onclick = () => allerAu(b.dataset.jour!)
+  })
+  return node
 }
 
 function enTete() {
@@ -531,6 +611,7 @@ function dessiner() {
 
   const p = panneau()
   app.replaceChildren(
+    calendrier(),
     enTete(),
     poidsDuJourWidget(),
     couronne(),
@@ -559,7 +640,8 @@ document.addEventListener('keydown', (e) => {
     surChangementEtat(dessiner)
     surImportDistant(appliquerRestauration)
     await charger()
-    initialiserDrive().catch(() => {}) // ne bloque jamais le premier rendu
+    chargerMoisCalendrier().catch(() => {}) // ne bloque jamais le premier rendu
+    initialiserDrive().catch(() => {})
   } catch (err: any) {
     const message = String(err?.message ?? err)
     // SQLite garde un verrou exclusif sur le fichier OPFS : un deuxième onglet
