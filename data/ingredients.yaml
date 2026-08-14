@@ -65,6 +65,26 @@
   lipides: 0.0
   fibres: 0.0  
 
+- id: whey_café
+  nom: Whey café
+  categorie: proteines
+  kcal: 375
+  proteines: 76
+  glucides: 6.0
+  lipides: 2.1
+  fibres: 0.0  
+  portions:
+    - { label: "1 portion", g: 25 }
+
+- id: lait_ecreme
+  nom: Lait écrémé (ml)
+  categorie: proteines
+  kcal: 34
+  proteines: 3.3
+  glucides: 4.8
+  lipides: 0.3
+  fibres: 0.0  
+
 - id: riz_basmati_cuit
   nom: Riz basmati (cuit)
   categorie: feculents
