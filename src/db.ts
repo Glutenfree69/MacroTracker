@@ -12,16 +12,20 @@ worker.onmessage = (e: MessageEvent) => {
   error ? p.ko(new Error(error)) : p.ok(result)
 }
 
-// Point d'accroche générique pour la synchro Drive : db.ts ignore tout de
-// drive.ts, il notifie juste qu'une écriture a eu lieu.
+// Point d'accroche générique pour la synchro Drive et les widgets dérivés
+// (moyenne kcal…) : db.ts ignore tout de leurs besoins, il notifie juste
+// qu'une écriture a eu lieu, à qui veut bien écouter.
 const OPS_ECRITURE = new Set(['ajouter', 'supprimer', 'creerRepas', 'supprimerRepas', 'copier', 'definirPoids'])
-let surEcriture: (() => void) | null = null
-export function surModification(cb: () => void) { surEcriture = cb }
+const ecouteursEcriture: (() => void)[] = []
+export function surModification(cb: () => void) { ecouteursEcriture.push(cb) }
 
 export function call<T = any>(op: string, payload?: any): Promise<T> {
   const id = ++seq
   return new Promise((ok, ko) => {
-    attente.set(id, { ok: (v) => { if (OPS_ECRITURE.has(op)) surEcriture?.(); ok(v) }, ko })
+    attente.set(id, {
+      ok: (v) => { if (OPS_ECRITURE.has(op)) ecouteursEcriture.forEach((cb) => cb()); ok(v) },
+      ko,
+    })
     worker.postMessage({ id, op, payload })
   })
 }

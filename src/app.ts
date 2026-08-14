@@ -495,6 +495,66 @@ function calendrier() {
   return node
 }
 
+/* ── Moyenne calorique ───────────────────────────────────────────── */
+
+// Rien avant le début du vrai suivi : exclut le bruit des jours de test.
+const PLANCHER_STATS = '2026-08-23'
+const PERIODES = [
+  { cle: 'p7', label: '7 j', jours: 7 },
+  { cle: 'p30', label: '30 j', jours: 30 },
+  { cle: 'tout', label: 'Tout', jours: null },
+] as const
+type Periode = (typeof PERIODES)[number]['cle']
+
+let periodeMoyenne: Periode = 'p7'
+let moyenneKcal: { valeur: number | null; jours: number } = { valeur: null, jours: 0 }
+
+function bornesPeriode(p: Periode): { debut: string; fin: string } {
+  const fin = iso(new Date())
+  const def = PERIODES.find((x) => x.cle === p)!
+  if (def.jours === null) return { debut: PLANCHER_STATS, fin }
+  const d = new Date()
+  d.setDate(d.getDate() - (def.jours - 1))
+  const debut = iso(d)
+  return { debut: debut < PLANCHER_STATS ? PLANCHER_STATS : debut, fin }
+}
+
+async function chargerMoyenne() {
+  const cible = periodeMoyenne
+  const { debut, fin } = bornesPeriode(cible)
+  const res = await call<{ jour: string; n: number; kcal: number }[]>('joursEntre', { debut, fin })
+  if (cible !== periodeMoyenne) return // la période a changé pendant le chargement
+  const jours = res.length
+  moyenneKcal = { valeur: jours ? res.reduce((s, r) => s + r.kcal, 0) / jours : null, jours }
+  dessiner()
+}
+
+function moyenneKcalWidget() {
+  const { valeur, jours } = moyenneKcal
+  const node = el(`
+    <aside class="moyenne" aria-label="Moyenne calorique">
+      <div class="moyenne__periode">
+        ${PERIODES.map((p) => `<button class="moyenne__pill ${p.cle === periodeMoyenne ? 'moyenne__pill--actif' : ''}"
+                                        data-periode="${p.cle}">${p.label}</button>`).join('')}
+      </div>
+      <div class="moyenne__valeur">
+        <span class="chiffre chiffre--grand">${valeur === null ? '—' : r0(valeur)}</span>
+        <span class="unite">kcal / jour</span>
+      </div>
+      <p class="moyenne__detail">${
+        jours ? `moyenne sur ${jours} jour${jours > 1 ? 's' : ''} loggé${jours > 1 ? 's' : ''}` : 'aucune donnée sur cette période'
+      }</p>
+    </aside>`)
+
+  node.querySelectorAll<HTMLButtonElement>('[data-periode]').forEach((b) => {
+    b.onclick = () => {
+      periodeMoyenne = b.dataset.periode as Periode
+      chargerMoyenne()
+    }
+  })
+  return node
+}
+
 function enTete() {
   const d = new Date(jour + 'T12:00:00')
   const aujourdhui = jour === iso(new Date())
@@ -612,6 +672,7 @@ function dessiner() {
   const p = panneau()
   app.replaceChildren(
     calendrier(),
+    moyenneKcalWidget(),
     enTete(),
     poidsDuJourWidget(),
     couronne(),
@@ -637,10 +698,12 @@ document.addEventListener('keydown', (e) => {
     ingredients = await call<Ing[]>('ingredients')
     await navigator.storage?.persist?.()
     surModification(planifierSync)
+    surModification(chargerMoyenne)
     surChangementEtat(dessiner)
     surImportDistant(appliquerRestauration)
     await charger()
     chargerMoisCalendrier().catch(() => {}) // ne bloque jamais le premier rendu
+    chargerMoyenne().catch(() => {})
     initialiserDrive().catch(() => {})
   } catch (err: any) {
     const message = String(err?.message ?? err)

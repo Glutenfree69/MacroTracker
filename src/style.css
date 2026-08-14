@@ -123,6 +123,32 @@ button:disabled { opacity: 0.25; cursor: default; }
 }
 .calendrier__case--actif .calendrier__pastille { background: #0b0f14; }
 
+/* ── Moyenne calorique (marge droite, écrans larges) ─────────────── */
+.moyenne {
+  position: fixed; top: 50%; transform: translateY(-50%);
+  left: calc(50vw + 18rem + 2rem);
+  width: 16rem;
+  display: none;
+  background: linear-gradient(160deg, var(--carte-haut), var(--carte));
+  border: 1px solid var(--trait);
+  border-radius: var(--rayon);
+  padding: 1.25rem 1rem;
+  text-align: center;
+}
+@media (min-width: 72rem) { .moyenne { display: block; } }
+
+.moyenne__periode { display: flex; justify-content: center; gap: 0.4rem; margin-bottom: 1.1rem; }
+.moyenne__pill {
+  border: 1px solid var(--trait); border-radius: 999px; padding: 0.3rem 0.75rem;
+  font-size: 0.76rem; color: var(--sourdine);
+  transition: border-color 0.15s, color 0.15s, background 0.15s;
+}
+.moyenne__pill:hover { border-color: var(--proteines); color: var(--texte); }
+.moyenne__pill--actif { background: var(--proteines); border-color: var(--proteines); color: #0b0f14; font-weight: 600; }
+
+.moyenne__valeur { display: flex; flex-direction: column; align-items: center; line-height: 1; }
+.moyenne__detail { margin-top: 0.6rem; font-size: 0.74rem; color: var(--sourdine); }
+
 /* ── La couronne du jour ──────────────────────────────────────────
    Pas d'objectif, donc pas de barre de progression : ce qui se lit ici,
    c'est la répartition. */
