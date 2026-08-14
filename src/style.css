@@ -71,6 +71,18 @@ button:disabled { opacity: 0.25; cursor: default; }
 .bandeau__date:disabled { opacity: 1; }
 .bandeau__date:not(:disabled):hover { background: var(--carte); }
 
+.poids {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 0.2rem 1rem; font-size: 0.85rem; color: var(--sourdine);
+}
+.poids__saisie { display: flex; align-items: center; gap: 0.4rem; }
+.poids input {
+  width: 4.5rem; background: #11151c; border: 1px solid var(--trait);
+  border-radius: 8px; padding: 0.4rem 0.55rem; color: var(--texte);
+  font-family: var(--mono); font-size: 0.95rem; text-align: right;
+}
+.poids input:focus { border-color: var(--proteines); }
+
 /* ── La couronne du jour ──────────────────────────────────────────
    Pas d'objectif, donc pas de barre de progression : ce qui se lit ici,
    c'est la répartition. */

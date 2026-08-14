@@ -14,7 +14,7 @@ worker.onmessage = (e: MessageEvent) => {
 
 // Point d'accroche générique pour la synchro Drive : db.ts ignore tout de
 // drive.ts, il notifie juste qu'une écriture a eu lieu.
-const OPS_ECRITURE = new Set(['ajouter', 'supprimer', 'creerRepas', 'supprimerRepas', 'copier'])
+const OPS_ECRITURE = new Set(['ajouter', 'supprimer', 'creerRepas', 'supprimerRepas', 'copier', 'definirPoids'])
 let surEcriture: (() => void) | null = null
 export function surModification(cb: () => void) { surEcriture = cb }
 

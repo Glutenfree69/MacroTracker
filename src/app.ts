@@ -55,6 +55,7 @@ let jour = iso(new Date())
 let ingredients: Ing[] = []
 let lignes: Ligne[] = []
 let repasDuJour: Repas[] = []
+let poidsDuJour: number | null = null
 let modale: Modale | null = null
 
 // D'où repartent les animations : la couronne et le compteur glissent de l'état
@@ -64,9 +65,10 @@ let precedent = { kcal: 0, arcs: [0, 0, 0] }
 let animerLignes = true
 
 async function charger() {
-  const d = await call<{ lignes: Ligne[]; repas: Repas[] }>('jour', { jour })
+  const d = await call<{ lignes: Ligne[]; repas: Repas[]; poids: number | null }>('jour', { jour })
   lignes = d.lignes
   repasDuJour = d.repas
+  poidsDuJour = d.poids
   dessiner()
 }
 
@@ -418,6 +420,30 @@ function enTete() {
   return node
 }
 
+/** Facultatif — une pesée par jour, écrasée si on la ressaisit. Vide = pas notée. */
+function poidsDuJourWidget() {
+  const node = el(`
+    <div class="poids">
+      <span>Poids</span>
+      <span class="poids__saisie">
+        <input type="number" inputmode="decimal" step="0.1" min="0"
+               placeholder="—" value="${poidsDuJour ?? ''}">
+        <span class="unite">kg</span>
+      </span>
+    </div>`)
+
+  const champ = node.querySelector<HTMLInputElement>('input')!
+  champ.onchange = async () => {
+    const v = champ.value.trim()
+    const kg = v === '' ? null : parseFloat(v)
+    if (kg !== null && !(kg > 0)) { champ.value = String(poidsDuJour ?? ''); return }
+    poidsDuJour = kg
+    await call('definirPoids', { jour, kg })
+  }
+  champ.onkeydown = (e) => { if (e.key === 'Enter') champ.blur() }
+  return node
+}
+
 function nouveauRepas() {
   const node = el(`<button class="nouveau-repas">+ Ajouter un repas</button>`)
   node.onclick = async () => {
@@ -492,6 +518,7 @@ function dessiner() {
   const p = panneau()
   app.replaceChildren(
     enTete(),
+    poidsDuJourWidget(),
     couronne(),
     ...cartes.map(sectionRepas),
     nouveauRepas(),

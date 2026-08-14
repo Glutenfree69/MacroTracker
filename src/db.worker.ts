@@ -46,6 +46,11 @@ CREATE TABLE IF NOT EXISTS ligne (
 );
 
 CREATE TABLE IF NOT EXISTS meta (cle TEXT PRIMARY KEY, valeur TEXT NOT NULL);
+
+-- Une pesée par jour, optionnelle. Pas d'historique de rectifications : on
+-- écrase la valeur du jour, comme le reste de l'app ne juge pas et ne garde
+-- qu'un instantané.
+CREATE TABLE IF NOT EXISTS poids (jour TEXT PRIMARY KEY, kg REAL NOT NULL);
 `
 
 function exec(sql: string, bind: any[] = []) {
@@ -140,7 +145,18 @@ const ops: Record<string, (a: any) => any> = {
   jour: ({ jour }: { jour: string }) => ({
     repas: exec('SELECT id, ordre FROM repas WHERE jour = ? ORDER BY ordre, id', [jour]),
     lignes: exec('SELECT * FROM ligne WHERE jour = ? ORDER BY id', [jour]),
+    poids: exec('SELECT kg FROM poids WHERE jour = ?', [jour])[0]?.kg ?? null,
   }),
+
+  /** kg=null efface la pesée du jour — c'est un champ facultatif. */
+  definirPoids: ({ jour, kg }: { jour: string; kg: number | null }) => {
+    if (kg === null) exec('DELETE FROM poids WHERE jour = ?', [jour])
+    else exec(
+      `INSERT INTO poids (jour, kg) VALUES (?, ?)
+       ON CONFLICT(jour) DO UPDATE SET kg = excluded.kg`, [jour, kg],
+    )
+    return { ok: true }
+  },
 
   creerRepas: ({ jour }: { jour: string }) => ({ id: creerRepas(jour) }),
 
