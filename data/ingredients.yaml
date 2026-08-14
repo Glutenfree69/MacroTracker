@@ -56,6 +56,15 @@
   portions:
     - { label: "1 portion", g: 25 }
 
+- id: blanc_oeuf
+  nom: Blanc d'oeuf en bouteille
+  categorie: proteines
+  kcal: 48
+  proteines: 10.8
+  glucides: 1.0
+  lipides: 0.0
+  fibres: 0.0  
+
 - id: riz_basmati_cuit
   nom: Riz basmati (cuit)
   categorie: feculents
