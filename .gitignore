@@ -1,6 +1,9 @@
 node_modules/
 dist/
 
+# Client ID Google (OAuth) en local, jamais commité.
+.env.local
+
 # Généré par scripts/build-ingredients.mjs à partir de data/ingredients.yaml.
 public/ingredients.json
 

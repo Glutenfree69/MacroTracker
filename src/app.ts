@@ -1,4 +1,7 @@
-import { call, demarrer } from './db'
+import { call, demarrer, surModification } from './db'
+import {
+  connecter, deconnecter, etatDrive, initialiserDrive, planifierSync, surChangementEtat, surImportDistant,
+} from './drive'
 import './style.css'
 
 type Ing = {
@@ -33,6 +36,18 @@ const esc = (s: unknown) =>
     ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]!)
 const dateFr = (j: string) =>
   new Date(j + 'T12:00:00').toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })
+const depuisTexte = (iso: string) => {
+  const min = Math.round((Date.now() - new Date(iso).getTime()) / 60_000)
+  if (min < 1) return "à l'instant"
+  if (min < 60) return `il y a ${min} min`
+  return `il y a ${Math.round(min / 60)} h`
+}
+const texteEtatDrive = (etat: ReturnType<typeof etatDrive>) =>
+  etat.reconnexionRequise ? 'reconnexion nécessaire'
+  : etat.erreur ? 'erreur de synchro'
+  : etat.enAttente ? 'en attente…'
+  : etat.dernierSyncLe ? `synchronisé ${depuisTexte(etat.dernierSyncLe)}`
+  : 'connecté'
 
 const doux = matchMedia('(prefers-reduced-motion: reduce)').matches
 
@@ -53,6 +68,15 @@ async function charger() {
   lignes = d.lignes
   repasDuJour = d.repas
   dessiner()
+}
+
+/** Remplace la base locale par ces octets (restauration manuelle ou pull Drive). */
+async function appliquerRestauration(octets: Uint8Array) {
+  await call('importer', { octets })
+  ingredients = await call<Ing[]>('ingredients')
+  precedent = { kcal: 0, arcs: [0, 0, 0] }
+  animerLignes = true
+  await charger()
 }
 
 function total(cle: 'kcal' | 'proteines' | 'glucides' | 'lipides' | 'fibres') {
@@ -408,15 +432,29 @@ function nouveauRepas() {
 }
 
 function pied() {
+  const etat = etatDrive()
   const node = el(`
     <footer class="pied">
       <button data-copier>Recopier un repas</button>
       <button data-export>Exporter</button>
       <button data-import>Restaurer</button>
+      ${etat.disponible ? `
+        <button data-drive>${
+          etat.reconnexionRequise ? 'Se reconnecter à Drive'
+          : etat.connecte ? 'Déconnecter Drive'
+          : 'Connecter Drive'
+        }</button>
+        ${etat.connecte ? `<span class="pied__etat ${etat.erreur ? 'pied__etat--erreur' : ''}">
+          Drive : ${texteEtatDrive(etat)}</span>` : ''}
+      ` : ''}
       <input type="file" accept=".sqlite,.db" hidden data-fichier>
     </footer>`)
 
   node.querySelector<HTMLButtonElement>('[data-copier]')!.onclick = () => ouvrir({ type: 'copier' })
+
+  node.querySelector<HTMLButtonElement>('[data-drive]')?.addEventListener('click', () => {
+    etat.connecte && !etat.reconnexionRequise ? deconnecter() : connecter()
+  })
 
   node.querySelector<HTMLButtonElement>('[data-export]')!.onclick = async () => {
     const octets = await call<Uint8Array>('exporter')
@@ -435,11 +473,7 @@ function pied() {
     if (!f) return
     if (confirm(`Remplacer toute la base locale par ${f.name} ? Les repas actuels seront perdus.`)) {
       try {
-        await call('importer', { octets: new Uint8Array(await f.arrayBuffer()) })
-        ingredients = await call<Ing[]>('ingredients')
-        precedent = { kcal: 0, arcs: [0, 0, 0] }
-        animerLignes = true
-        await charger()
+        await appliquerRestauration(new Uint8Array(await f.arrayBuffer()))
       } catch (err: any) {
         alert(`Restauration impossible : ${err?.message ?? err}\nLa base actuelle est intacte.`)
       }
@@ -480,7 +514,11 @@ document.addEventListener('keydown', (e) => {
     await demarrer()
     ingredients = await call<Ing[]>('ingredients')
     await navigator.storage?.persist?.()
+    surModification(planifierSync)
+    surChangementEtat(dessiner)
+    surImportDistant(appliquerRestauration)
     await charger()
+    initialiserDrive().catch(() => {}) // ne bloque jamais le premier rendu
   } catch (err: any) {
     const message = String(err?.message ?? err)
     // SQLite garde un verrou exclusif sur le fichier OPFS : un deuxième onglet
