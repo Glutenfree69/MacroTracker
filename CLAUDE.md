@@ -1,7 +1,6 @@
 # MacroTracker
 
-App web perso de suivi de macros. Utilisateur unique (Dylan), pas de backend,
-pas de compte, pas d'API externe.
+App web perso de suivi de macros et de poids. Utilisateur unique (Dylan).
 
 **Répondre en français.**
 
@@ -13,25 +12,23 @@ Un site statique déployé sur GitHub Pages
 iOS, ni une PWA à installer sur l'écran d'accueil. Ce virage est délibéré : le
 projet a commencé en SwiftUI/SwiftData avant d'être repris en web.
 
-## Périmètre v1 — ne pas élargir sans qu'on le demande
+## État actuel
 
-Logger des repas et voir les totaux glucides / protéines / lipides / calories du
-jour. C'est tout. Explicitement **hors périmètre** : objectifs et cibles
-journalières (retirés à la demande : on totalise, on ne juge pas), API externe
-(OpenFoodFacts & co), code-barres, comptes utilisateurs, sync cloud, graphiques
-d'historique, recettes composées, micronutriments.
+Projet perso qui continue d'évoluer — ce qui suit décrit l'état des lieux, pas
+un périmètre figé. Pas besoin de revalider avec Dylan avant d'étendre ou de
+changer une de ces lignes ; en cas de doute sur une direction produit, demande
+plutôt que de deviner.
 
-## Décisions arrêtées — ne pas relitiger
-
-| Sujet | Décision |
+| Sujet | Aujourd'hui |
 |---|---|
 | Macros | saisies **pour 100 g**, quantité pesée en grammes au logging |
 | kcal | **saisies**, pas dérivées du 4/4/9 — l'étiquette fait foi, Atwater ne sert qu'à valider |
 | Aliments | vivent dans `data/ingredients.yaml`, versionnés par git, validés par la CI |
-| Repas | vivent dans le navigateur, base SQLite en OPFS, jamais poussés |
-| Objectifs | **aucun** — pas de cible journalière, pas de barre de progression |
 | Repas | génériques et illimités, `repas(id, jour, ordre)`, libellés « Repas N » par rang |
+| Poids | une pesée facultative par jour (table `poids`), pas d'historique de correction — la dernière valeur écrase |
+| Objectifs | aucun pour l'instant — pas de cible journalière, pas de barre de progression |
 | Vue du jour | anneau de **répartition** (part des kcal par macro) + total au centre |
+| Stockage | SQLite en OPFS dans le navigateur (source de vérité) + synchro de secours vers Google Drive (`src/drive.ts`, OAuth2 client-side, optionnelle) |
 | Stack | Vite + TypeScript sans framework, SQLite WASM (VFS OPFS-SAHPool) dans un Worker |
 
 Deux contraintes techniques enchaînées, qui expliquent le VFS choisi : le VFS
@@ -40,7 +37,7 @@ Pages ne sait pas émettre → on prend **SAHPool** ; et `createSyncAccessHandle
 n'est autorisé que hors du thread principal → tout SQLite vit dans
 `src/db.worker.ts`.
 
-## Invariant d'architecture (le plus important)
+## Invariant d'architecture — la seule règle qui ne bouge pas
 
 Une ligne de `ligne` stocke un **snapshot** des macros au moment du log
 (colonnes `kcal`, `proteines`, `glucides`, `lipides`, `fibres` en valeur absolue),
@@ -50,7 +47,9 @@ produit change de recette ou de fournisseur. `ingredient_id` n'est gardé que po
 le confort d'analyse.
 
 Corollaire : toute feature qui touche les ingrédients doit être vérifiée contre
-ce scénario avant d'être considérée comme terminée.
+ce scénario avant d'être considérée comme terminée. Même logique pour tout
+mécanisme de sync (Drive ou futur) : il transporte le fichier `.sqlite` tel
+quel, il ne doit jamais recalculer ou rejouer les lignes.
 
 ## Commandes
 
@@ -84,14 +83,23 @@ Le déploiement est automatique : push sur `main` → workflow
 - **La casse compte** dans l'URL Pages : `/MacroTracker/`, pas `/macrotracker/`.
   Le défaut de `vite.config.ts` doit rester aligné sur le nom du repo.
 - **Les données sont par origine.** `localhost:5173` et `github.io` sont deux
-  bases OPFS distinctes. Les repas saisis en local ne remontent pas en ligne.
-  Le pont, c'est Exporter / Restaurer.
+  bases OPFS distinctes. Ce qui est saisi en local ne remonte pas en ligne tout
+  seul. Le pont : Exporter / Restaurer manuel, ou la synchro Drive si connectée
+  des deux côtés.
 - **Fenêtre privée = pas d'OPFS.** L'app affiche un écran d'erreur explicite
   plutôt que de faire semblant.
 - **Un seul onglet.** SQLite verrouille son fichier OPFS en exclusivité ; un
   deuxième onglet échoue à l'ouverture. `src/app.ts` reconnaît l'erreur et le dit
   en français au lieu d'afficher le message brut du navigateur.
-- **Migration de schéma.** `migrer()` dans `src/db.worker.ts` reconstruit `ligne`
-  quand elle vient de la v1 (repas fixes `petit_dej`/`dejeuner`/…). Toute
-  évolution du schéma passe par là, jamais par un `DROP TABLE` : les journées
-  passées ne se réécrivent pas.
+- **Évolution de schéma additive.** `CREATE TABLE IF NOT EXISTS` / nouvelle
+  colonne suffit dans la plupart des cas (voir `poids`). Pour une vraie
+  restructuration, suivre le modèle de `migrer()` dans `src/db.worker.ts`
+  (reconstruire plutôt que `DROP TABLE`) : les journées passées ne se
+  réécrivent pas.
+- **Google Drive : l'API doit être activée** dans le projet GCP
+  (`console.developers.google.com/apis/api/drive.googleapis.com`), sinon la
+  synchro échoue en 403 `accessNotConfigured` dès la première tentative.
+- **Brave (et navigateurs à bloqueurs agressifs)** : Shields peut bloquer la
+  ré-auth silencieuse Google (`prompt: 'none'`) ou empêcher la popup de
+  connexion initiale. L'app retombe proprement sur « reconnexion nécessaire » ;
+  si la popup ne s'ouvre jamais, désactiver Shields pour le site en dépannage.
