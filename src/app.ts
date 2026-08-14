@@ -498,7 +498,7 @@ function calendrier() {
 /* ── Moyenne calorique ───────────────────────────────────────────── */
 
 // Rien avant le début du vrai suivi : exclut le bruit des jours de test.
-const PLANCHER_STATS = '2026-08-23'
+const PLANCHER_STATS = '2026-08-13'
 const PERIODES = [
   { cle: 'p7', label: '7 j', jours: 7 },
   { cle: 'p30', label: '30 j', jours: 30 },
