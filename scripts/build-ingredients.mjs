@@ -25,9 +25,10 @@ const NOMBRES = ['kcal', 'proteines', 'glucides', 'lipides', 'fibres']
 // Facteurs d'Atwater (règlement UE 1169/2011)
 const K_PROT = 4, K_GLUC = 4, K_LIP = 9, K_FIB = 2
 
-// Tolérance : 5 % en relatif, mais au moins 12 kcal en absolu. Sans le plancher,
-// le brocoli à 35 kcal se ferait recaler pour un arrondi d'étiquette.
-const TOL_REL = 0.05, TOL_ABS = 12
+// Tolérance : 15 % en relatif, mais au moins 12 kcal en absolu. Sans le plancher,
+// le brocoli à 35 kcal se ferait recaler pour un arrondi d'étiquette. On fait
+// confiance à l'étiquette avant tout — Atwater n'est qu'un filet grossier.
+const TOL_REL = 0.15, TOL_ABS = 12
 
 const estNombre = (v) => typeof v === 'number' && Number.isFinite(v)
 
@@ -107,7 +108,7 @@ function valider(brut) {
           `calcul Atwater ${calc.toFixed(0)} (écart ${ecart.toFixed(0)} kcal). ` +
           'Vérifie la virgule, les glucides « dont sucres », et la base 100 g.',
       )
-    } else if (ecart > Math.max(0.02 * ing.kcal, 5)) {
+    } else if (ecart > Math.max(0.06 * ing.kcal, 8)) {
       avertissements.push(`${tag} écart Atwater de ${ecart.toFixed(0)} kcal — toléré, mais jette un œil.`)
     }
 
