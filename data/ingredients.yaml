@@ -94,6 +94,15 @@
   lipides: 0.3
   fibres: 0.0  
 
+- id: cafe_caramel
+  nom: Café instantané gout caramel
+  categorie: sucre
+  kcal: 366
+  proteines: 8.9
+  glucides: 75.1
+  lipides: 2.7
+  fibres: 2.7 
+
 - id: riz_basmati_cuit
   nom: Riz basmati (cuit)
   categorie: feculents
