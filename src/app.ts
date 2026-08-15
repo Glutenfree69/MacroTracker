@@ -419,7 +419,7 @@ function allerAu(j: string) {
 function glisserJour(n: number) {
   const d = new Date(jour + 'T12:00:00')
   d.setDate(d.getDate() + n)
-  if (n > 0 && d > new Date()) return // pas de repas dans le futur
+  if (n > 0 && iso(d) > iso(new Date())) return // pas de repas dans le futur
   allerAu(iso(d))
 }
 
