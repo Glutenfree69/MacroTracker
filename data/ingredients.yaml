@@ -81,9 +81,16 @@
   proteines: 76
   glucides: 6.0
   lipides: 2.1
-  fibres: 0.0  
-  portions:
-    - { label: "1 portion", g: 25 }
+  fibres: 0.0 
+
+- id: whey_vanille
+  nom: Whey vanille
+  categorie: proteines
+  kcal: 385
+  proteines: 78
+  glucides: 4.6
+  lipides: 2.0
+  fibres: 0.0   
 
 - id: lait_ecreme
   nom: Lait écrémé
@@ -192,6 +199,15 @@
   lipides: 4.3
   fibres: 2.3
 
+- id: puree_celeri
+  nom: Purée de celeri surgelé
+  categorie: legumes
+  kcal: 34
+  proteines: 1.2
+  glucides: 3.3
+  lipides: 1.1
+  fibres: 3.3
+
 - id: epinards
   nom: Épinards surgelé
   categorie: legumes
@@ -227,5 +243,21 @@
   glucides: 19.6
   lipides: 0.3
   fibres: 2.1
-  portions:
-    - { label: "1 banane moyenne (épluchée)", g: 118 }
+
+- id: mangue
+  nom: mange surgelé
+  categorie: fruits
+  kcal: 50
+  proteines: 0
+  glucides: 11
+  lipides: 0.3
+  fibres: 1.4
+
+- id: myrtilles
+  nom: myrtilles surgelé
+  categorie: fruits
+  kcal: 48
+  proteines: 0
+  glucides: 8.9
+  lipides: 0.3
+  fibres: 2.8
