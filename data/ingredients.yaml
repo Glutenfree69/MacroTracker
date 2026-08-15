@@ -101,6 +101,15 @@
   lipides: 0.3
   fibres: 0.0  
 
+- id: lait_avoine_vanille
+  nom: Lait avoine gout vanille
+  categorie: sucre
+  kcal: 44
+  proteines: 0
+  glucides: 7.0
+  lipides: 1.5
+  fibres: 0.0  
+
 - id: cafe_caramel
   nom: Café instantané gout caramel
   categorie: sucre
