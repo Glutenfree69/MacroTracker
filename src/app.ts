@@ -762,6 +762,7 @@ document.addEventListener('keydown', (e) => {
     await navigator.storage?.persist?.()
     surModification(planifierSync)
     surModification(chargerMoyenne)
+    surModification(chargerMoisCalendrier)
     surChangementEtat(dessiner)
     surImportDistant(appliquerRestauration)
     await charger()
