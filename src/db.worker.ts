@@ -89,10 +89,20 @@ function migrer() {
   })
 }
 
+/** Ajoute la colonne des repas saisis à la main (Uber Eats…) si elle manque
+    encore — SQLite autorise ADD COLUMN NOT NULL DEFAULT directement, pas
+    besoin du rebuild façon migrer(). */
+function migrerUberEats() {
+  const colonnes = exec(`PRAGMA table_info(ligne)`).map((c: any) => c.name)
+  if (colonnes.includes('uber_eats')) return
+  exec(`ALTER TABLE ligne ADD COLUMN uber_eats INTEGER NOT NULL DEFAULT 0`)
+}
+
 function ouvrirBase() {
   db = new pool.OpfsSAHPoolDb('/macros.sqlite')
   db.exec(SCHEMA)
   migrer() // avant l'index : il porte sur une colonne que la v1 n'a pas
+  migrerUberEats()
   db.exec(`CREATE INDEX IF NOT EXISTS idx_ligne_jour ON ligne(jour, repas_id)`)
 }
 
@@ -183,6 +193,20 @@ const ops: Record<string, (a: any) => any> = {
     return { repas_id: cible }
   },
 
+  /** Repas saisi à la main (Uber Eats…) : pas d'ingrédient réel, pas de pesée —
+      les macros sont tapées directement, comme une étiquette qu'on recopie. */
+  ajouterManuel: ({ jour, repas_id, nom, kcal, proteines, glucides, lipides }: any) => {
+    const cible = repas_id ?? creerRepas(jour)
+    exec(
+      `INSERT INTO ligne (jour, repas_id, ingredient_id, nom, grammes, kcal, proteines,
+                          glucides, lipides, fibres, cree_le, uber_eats)
+       VALUES (?,?,?,?,?,?,?,?,?,?,?,?)`,
+      [jour, cible, 'manuel', nom, 0, kcal, proteines, glucides, lipides, 0,
+       new Date().toISOString(), 1],
+    )
+    return { repas_id: cible }
+  },
+
   supprimer: ({ id }: { id: number }) => {
     exec('DELETE FROM ligne WHERE id = ?', [id])
     return { ok: true }
@@ -220,7 +244,7 @@ const ops: Record<string, (a: any) => any> = {
   /** Résumé jour par jour sur un intervalle — sert la grille du calendrier. */
   joursEntre: ({ debut, fin }: { debut: string; fin: string }) =>
     exec(
-      `SELECT jour, COUNT(*) n, ROUND(SUM(kcal)) kcal FROM ligne
+      `SELECT jour, COUNT(*) n, ROUND(SUM(kcal)) kcal, MAX(uber_eats) uber_eats FROM ligne
        WHERE jour BETWEEN ? AND ? GROUP BY jour`, [debut, fin],
     ),
 

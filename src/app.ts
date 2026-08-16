@@ -12,6 +12,7 @@ type Ing = {
 type Ligne = {
   id: number; jour: string; repas_id: number; nom: string; grammes: number
   kcal: number; proteines: number; glucides: number; lipides: number; fibres: number
+  uber_eats: number
 }
 type Repas = { id: number; ordre: number }
 type Apercu = { id: number; ordre: number; n: number; kcal: number; apercu: string | null }
@@ -20,6 +21,7 @@ type Apercu = { id: number; ordre: number; n: number; kcal: number; apercu: stri
 type Modale =
   | { type: 'recherche'; repas: number | null }
   | { type: 'quantite'; repas: number | null; ing: Ing }
+  | { type: 'manuel'; repas: number | null }
   | { type: 'copier' }
 
 const MACROS = [
@@ -58,7 +60,7 @@ let repasDuJour: Repas[] = []
 let poidsDuJour: number | null = null
 let modale: Modale | null = null
 
-type JourActif = { n: number; kcal: number }
+type JourActif = { n: number; kcal: number; uberEats: boolean }
 let moisAffiche = jour.slice(0, 7) // 'YYYY-MM'
 let joursActifsMois = new Map<string, JourActif>()
 
@@ -204,7 +206,7 @@ function sectionRepas(r: Repas | { id: null; ordre: number }, rang: number) {
             <button class="ligne__nom" data-detail aria-expanded="false">
               ${esc(l.nom)}<span class="ligne__fleche" aria-hidden="true">⌄</span>
             </button>
-            <span class="ligne__g chiffre">${r0(l.grammes)} g</span>
+            <span class="ligne__g chiffre">${l.uber_eats ? '🛵' : `${r0(l.grammes)} g`}</span>
             <span class="ligne__kcal chiffre">${r0(l.kcal)}</span>
             <button class="retirer" data-id="${l.id}" aria-label="Retirer ${esc(l.nom)}">×</button>
             <ul class="ligne__macros">
@@ -348,6 +350,53 @@ function panneauQuantite(repas: number | null, ing: Ing) {
   return node
 }
 
+/** Repas saisi à la main (Uber Eats…) : pas de recherche, pas de pesée — les
+    macros sont recopiées telles quelles depuis l'appli de livraison. */
+function panneauManuel(repas: number | null) {
+  const node = feuille(`
+    <header class="feuille__tete">
+      <h2>Repas Uber Eats</h2>
+      <button data-fermer aria-label="Fermer">×</button>
+    </header>
+    <div class="manuel">
+      <input class="manuel__nom" type="text" placeholder="Nom du repas" autocomplete="off">
+      <label class="manuel__champ"><span>Kcal</span>
+        <input type="number" inputmode="decimal" min="0" step="1" data-kcal></label>
+      <label class="manuel__champ"><span>Protéines (g)</span>
+        <input type="number" inputmode="decimal" min="0" step="0.1" data-proteines></label>
+      <label class="manuel__champ"><span>Glucides (g)</span>
+        <input type="number" inputmode="decimal" min="0" step="0.1" data-glucides></label>
+      <label class="manuel__champ"><span>Lipides (g)</span>
+        <input type="number" inputmode="decimal" min="0" step="0.1" data-lipides></label>
+    </div>
+    <button class="valider">Ajouter le repas</button>`, 'Repas Uber Eats')
+
+  const nom = node.querySelector<HTMLInputElement>('.manuel__nom')!
+  const kcal = node.querySelector<HTMLInputElement>('[data-kcal]')!
+  const proteines = node.querySelector<HTMLInputElement>('[data-proteines]')!
+  const glucides = node.querySelector<HTMLInputElement>('[data-glucides]')!
+  const lipides = node.querySelector<HTMLInputElement>('[data-lipides]')!
+
+  const valider = async () => {
+    const titre = nom.value.trim()
+    const k = parseFloat(kcal.value)
+    if (!titre || !(k >= 0)) return
+    modale = null
+    animerLignes = false
+    await call('ajouterManuel', {
+      jour, repas_id: repas, nom: titre, kcal: k,
+      proteines: parseFloat(proteines.value) || 0,
+      glucides: parseFloat(glucides.value) || 0,
+      lipides: parseFloat(lipides.value) || 0,
+    })
+    charger()
+  }
+  nom.onkeydown = (e) => { if (e.key === 'Enter') valider() }
+  setTimeout(() => nom.focus(), 30)
+  node.querySelector<HTMLButtonElement>('.valider')!.onclick = valider
+  return node
+}
+
 /** Recopier un repas d'un autre jour. Sans ça, on tient deux semaines. */
 function panneauCopier() {
   const veille = new Date(jour + 'T12:00:00')
@@ -398,6 +447,7 @@ function panneau() {
   switch (modale.type) {
     case 'recherche': return panneauRecherche(modale.repas)
     case 'quantite': return panneauQuantite(modale.repas, modale.ing)
+    case 'manuel': return panneauManuel(modale.repas)
     case 'copier': return panneauCopier()
   }
 }
@@ -443,9 +493,9 @@ async function chargerMoisCalendrier() {
   const [y, m] = cible.split('-').map(Number)
   const debut = `${cible}-01`
   const fin = `${cible}-${String(new Date(y, m, 0).getDate()).padStart(2, '0')}`
-  const res = await call<{ jour: string; n: number; kcal: number }[]>('joursEntre', { debut, fin })
+  const res = await call<{ jour: string; n: number; kcal: number; uber_eats: number }[]>('joursEntre', { debut, fin })
   if (cible !== moisAffiche) return // le mois a changé pendant le chargement, résultat périmé
-  joursActifsMois = new Map(res.map((l) => [l.jour, { n: l.n, kcal: l.kcal }]))
+  joursActifsMois = new Map(res.map((l) => [l.jour, { n: l.n, kcal: l.kcal, uberEats: !!l.uber_eats }]))
   dessiner()
 }
 
@@ -477,11 +527,12 @@ function calendrier() {
         ${cases.map((j) => {
           if (!j) return `<span class="calendrier__case calendrier__case--vide"></span>`
           const actif = j === jour, estAuj = j === auj, futur = j > auj
-          const logge = joursActifsMois.has(j)
+          const info = joursActifsMois.get(j)
+          const logge = !!info
           return `<button class="calendrier__case ${actif ? 'calendrier__case--actif' : ''} ${estAuj && !actif ? 'calendrier__case--auj' : ''}"
                     data-jour="${j}" ${futur ? 'disabled' : ''} aria-current="${estAuj ? 'date' : 'false'}"
-                    aria-label="${esc(dateFr(j))}${logge ? ', repas loggés' : ''}">
-                    ${Number(j.slice(8))}${logge ? '<span class="calendrier__pastille"></span>' : ''}
+                    aria-label="${esc(dateFr(j))}${logge ? ', repas loggés' : ''}${info?.uberEats ? ' (Uber Eats)' : ''}">
+                    ${Number(j.slice(8))}${logge ? `<span class="calendrier__pastille ${info!.uberEats ? 'calendrier__pastille--uber' : ''}"></span>` : ''}
                   </button>`
         }).join('')}
       </div>
@@ -599,14 +650,26 @@ function poidsDuJourWidget() {
 }
 
 function nouveauRepas() {
-  const node = el(`<button class="nouveau-repas">+ Ajouter un repas</button>`)
-  node.onclick = async () => {
+  const node = el(`
+    <div class="nouveaux-repas">
+      <button class="nouveau-repas">+ Ajouter un repas</button>
+      <label class="uber-eats">
+        <input type="checkbox" data-uber>
+        <span>🛵 Repas Uber Eats</span>
+      </label>
+    </div>`)
+  node.querySelector<HTMLButtonElement>('.nouveau-repas')!.onclick = async () => {
     animerLignes = false
     // Le « Repas 1 » d'une journée vide n'existe pas encore en base : on le
     // matérialise avant d'en créer un second, sinon il disparaîtrait à l'écran.
     if (!repasDuJour.length) await call('creerRepas', { jour })
     await call('creerRepas', { jour })
     charger()
+  }
+  // Pas d'état à réinitialiser : dessiner() redessine une case décochée à
+  // chaque rendu, que le panneau soit validé ou fermé.
+  node.querySelector<HTMLInputElement>('[data-uber]')!.onchange = (e) => {
+    if ((e.target as HTMLInputElement).checked) ouvrir({ type: 'manuel', repas: null })
   }
   return node
 }

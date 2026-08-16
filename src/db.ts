@@ -15,7 +15,7 @@ worker.onmessage = (e: MessageEvent) => {
 // Point d'accroche générique pour la synchro Drive et les widgets dérivés
 // (moyenne kcal…) : db.ts ignore tout de leurs besoins, il notifie juste
 // qu'une écriture a eu lieu, à qui veut bien écouter.
-const OPS_ECRITURE = new Set(['ajouter', 'supprimer', 'creerRepas', 'supprimerRepas', 'copier', 'definirPoids'])
+const OPS_ECRITURE = new Set(['ajouter', 'ajouterManuel', 'supprimer', 'creerRepas', 'supprimerRepas', 'copier', 'definirPoids'])
 const ecouteursEcriture: (() => void)[] = []
 export function surModification(cb: () => void) { ecouteursEcriture.push(cb) }
 

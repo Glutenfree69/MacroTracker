@@ -121,6 +121,7 @@ button:disabled { opacity: 0.25; cursor: default; }
 .calendrier__pastille {
   position: absolute; bottom: 3px; width: 4px; height: 4px; border-radius: 50%; background: var(--proteines);
 }
+.calendrier__pastille--uber { background: var(--lipides); }
 .calendrier__case--actif .calendrier__pastille { background: #0b0f14; }
 
 /* ── Moyenne calorique (marge droite, écrans larges) ─────────────── */
@@ -266,8 +267,9 @@ button:disabled { opacity: 0.25; cursor: default; }
 }
 .ajouter:hover { color: var(--proteines); background: rgba(79, 195, 161, 0.06); }
 
+.nouveaux-repas { margin-top: 1.5rem; display: flex; flex-direction: column; gap: 0.5rem; }
 .nouveau-repas {
-  width: 100%; margin-top: 1.5rem; padding: 0.85rem;
+  width: 100%; padding: 0.85rem;
   border: 1px dashed var(--trait); border-radius: 12px;
   color: var(--sourdine); font-size: 0.86rem;
   transition: border-color 0.18s, color 0.18s, background 0.18s;
@@ -276,6 +278,12 @@ button:disabled { opacity: 0.25; cursor: default; }
   border-color: var(--proteines); color: var(--texte);
   background: rgba(79, 195, 161, 0.05);
 }
+.uber-eats {
+  display: flex; align-items: center; gap: 0.5rem;
+  padding: 0 0.25rem; font-size: 0.8rem; color: var(--sourdine); cursor: pointer;
+}
+.uber-eats:hover { color: var(--texte); }
+.uber-eats input { accent-color: var(--lipides); width: 1rem; height: 1rem; }
 
 /* ── Entrées en scène ── */
 @keyframes monteFade { from { opacity: 0; transform: translateY(10px); } }
@@ -372,6 +380,25 @@ button:disabled { opacity: 0.25; cursor: default; }
 }
 .valider:hover { filter: brightness(1.08); }
 .valider:active { transform: scale(0.985); }
+
+/* ── Repas Uber Eats (saisie manuelle) ── */
+.manuel { display: grid; gap: 0.6rem; margin-bottom: 1.1rem; }
+.manuel__nom {
+  width: 100%; background: #11151c; border: 1px solid var(--trait);
+  border-radius: 10px; padding: 0.7rem 0.85rem; color: var(--texte); font-size: 16px;
+  transition: border-color 0.15s;
+}
+.manuel__nom:focus { border-color: var(--proteines); }
+.manuel__champ {
+  display: flex; align-items: center; justify-content: space-between; gap: 1rem;
+  padding: 0.4rem 0; border-bottom: 1px solid var(--trait); font-size: 0.9rem;
+}
+.manuel__champ input {
+  width: 6rem; background: #11151c; border: 1px solid var(--trait); border-radius: 8px;
+  padding: 0.45rem 0.6rem; color: var(--texte);
+  font-family: var(--mono); font-size: 0.95rem; text-align: right;
+}
+.manuel__champ input:focus { border-color: var(--proteines); }
 
 /* ── Réglages (sélecteur de date de la recopie) ── */
 .reglages { display: grid; gap: 0.5rem; }
