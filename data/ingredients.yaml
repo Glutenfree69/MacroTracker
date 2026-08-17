@@ -138,6 +138,15 @@
   fibres: 0.5
   note: "349 kcal/100 g cru ÷ 2.5 de rendement"
 
+- id: pates_konjak
+  nom: Pates konjac
+  categorie: feculents
+  kcal: 7
+  proteines: 0.0
+  glucides: 0.0
+  lipides: 0.0
+  fibres: 3.7
+
 - id: patate_douce_cuite
   nom: Patate douce (cuite au four)
   categorie: feculents
@@ -279,3 +288,21 @@
   glucides: 8.9
   lipides: 0.3
   fibres: 2.8
+
+- id: crème_légère
+  nom: Crème 4%
+  categorie: sauce
+  kcal: 76
+  proteines: 2.9
+  glucides: 6.3
+  lipides: 4.3
+  fibres: 0.2
+
+- id: harissa
+  nom: Harissa
+  categorie: sauce
+  kcal: 62
+  proteines: 2.6
+  glucides: 7.6
+  lipides: 1.3
+  fibres: 4.5
