@@ -24,6 +24,15 @@
   lipides: 1.7
   fibres: 0.0  
 
+- id: poulet_filet
+  nom: Filet de poulet jaune
+  categorie: proteines
+  kcal: 106
+  proteines: 23
+  glucides: 0.0
+  lipides: 1.7
+  fibres: 0.0  
+
 - id: oeuf_entier
   nom: Œuf entier
   categorie: proteines
