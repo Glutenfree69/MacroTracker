@@ -726,6 +726,13 @@ function pied() {
   return node
 }
 
+/** N'agite que le pied de page : un changement d'état Drive (en attente,
+ * synchronisé, erreur…) n'a pas à redessiner toute l'app et couper une saisie
+ * en cours ailleurs (recherche, quantité, entrée manuelle…). */
+function rafraichirEtatDrive() {
+  document.querySelector('.pied')?.replaceWith(pied())
+}
+
 function dessiner() {
   // Une journée vierge montre quand même un « Repas 1 » : il se crée en base au
   // premier aliment déposé dedans (repas_id null côté worker).
@@ -763,7 +770,7 @@ document.addEventListener('keydown', (e) => {
     surModification(planifierSync)
     surModification(chargerMoyenne)
     surModification(chargerMoisCalendrier)
-    surChangementEtat(dessiner)
+    surChangementEtat(rafraichirEtatDrive)
     surImportDistant(appliquerRestauration)
     await charger()
     chargerMoisCalendrier().catch(() => {}) // ne bloque jamais le premier rendu
