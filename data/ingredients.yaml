@@ -197,6 +197,15 @@
   lipides: 66
   fibres: 15
 
+- id: peanut_butter_powder
+  nom: Peanut butter powder
+  categorie: lipides
+  kcal: 443
+  proteines: 49
+  glucides: 33
+  lipides: 13
+  fibres: 17
+
 - id: amandes
   nom: Amandes
   categorie: lipides
