@@ -265,9 +265,9 @@
 - id: julienne_legumes
   nom: Julienne de legumes surgelé
   categorie: legumes
-  kcal: 26
-  proteines: 0.9
-  glucides: 3.6
+  kcal: 32
+  proteines: 1.3
+  glucides: 5.2
   lipides: 0.0
   fibres: 2.9
 
