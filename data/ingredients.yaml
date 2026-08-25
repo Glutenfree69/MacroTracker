@@ -33,6 +33,15 @@
   lipides: 1.7
   fibres: 0.0  
 
+- id: filet_mignon
+  nom: Filet mignon de porc
+  categorie: proteines
+  kcal: 123
+  proteines: 21
+  glucides: 0.0
+  lipides: 4.2
+  fibres: 0.0  
+
 - id: oeuf_entier
   nom: Œuf entier
   categorie: proteines
@@ -57,9 +66,9 @@
 - id: fromage_blanc
   nom: Fromage blanc 0%
   categorie: proteines
-  kcal: 61
-  proteines: 6.5
-  glucides: 7.8
+  kcal: 49
+  proteines: 6.8
+  glucides: 5.4
   lipides: 0.0
   fibres: 0.0
 
@@ -270,6 +279,15 @@
   glucides: 5.2
   lipides: 0.0
   fibres: 2.9
+
+- id: poelee_champetre
+  nom: Poêlée champètre surgelé Lidl
+  categorie: legumes
+  kcal: 57
+  proteines: 2.7
+  glucides: 4.5
+  lipides: 2.3
+  fibres: 3.8
 
 - id: sauce_tomates_mozza
   nom: Sauce indus tomates mozza barilla
