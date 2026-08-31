@@ -360,3 +360,12 @@
   glucides: 7.6
   lipides: 1.3
   fibres: 4.5
+
+- id: prepmymeal_saumon 
+  nom: Prep my meal - penne saumon
+  categorie: proteines
+  kcal: 118
+  proteines: 9.4
+  glucides: 15
+  lipides: 1.5
+  fibres: 2
