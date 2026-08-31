@@ -369,3 +369,30 @@
   glucides: 15
   lipides: 1.5
   fibres: 2
+
+- id: prepmymeal_paella 
+  nom: Prep my meal - Chicken paella
+  categorie: proteines
+  kcal: 98
+  proteines: 8.0
+  glucides: 9
+  lipides: 2.9
+  fibres: 2
+
+- id: prepmymeal_fajita 
+  nom: Prep my meal - Chicken fajita
+  categorie: proteines
+  kcal: 117
+  proteines: 10.9
+  glucides: 12
+  lipides: 2.4
+  fibres: 2
+
+- id: prepmymeal_chicken_rice
+  nom: Prep my meal - Chicken rice brocoli
+  categorie: proteines
+  kcal: 91
+  proteines: 8.3
+  glucides: 12
+  lipides: 0.9
+  fibres: 2
