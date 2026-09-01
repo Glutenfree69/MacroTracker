@@ -193,16 +193,22 @@ const ops: Record<string, (a: any) => any> = {
     return { repas_id: cible }
   },
 
-  /** Repas saisi à la main (Uber Eats…) : pas d'ingrédient réel, pas de pesée —
-      les macros sont tapées directement, comme une étiquette qu'on recopie. */
-  ajouterManuel: ({ jour, repas_id, nom, kcal, proteines, glucides, lipides }: any) => {
+  /** Macros tapées à la main : pas d'ingrédient réel, pas de pesée — l'étiquette
+      est recopiée telle quelle. Deux appelants, un seul INSERT : le repas livré
+      (uber_eats=1, qui se signale par 🛵 et sa pastille de calendrier) et
+      l'aliment libre ajouté dans un repas ordinaire (uber_eats=0). */
+  ajouterManuel: ({ jour, repas_id, nom, kcal, proteines, glucides, lipides,
+                    fibres = 0, uber_eats = 0 }: any) => {
     const cible = repas_id ?? creerRepas(jour)
+    // Sentinelles : ingredient_id est NOT NULL et ne pointe vers rien ici, mais
+    // autant garder la trace de la provenance pour une analyse ultérieure.
+    const sentinelle = uber_eats ? 'manuel' : 'libre'
     exec(
       `INSERT INTO ligne (jour, repas_id, ingredient_id, nom, grammes, kcal, proteines,
                           glucides, lipides, fibres, cree_le, uber_eats)
        VALUES (?,?,?,?,?,?,?,?,?,?,?,?)`,
-      [jour, cible, 'manuel', nom, 0, kcal, proteines, glucides, lipides, 0,
-       new Date().toISOString(), 1],
+      [jour, cible, sentinelle, nom, 0, kcal, proteines, glucides, lipides, fibres,
+       new Date().toISOString(), uber_eats],
     )
     return { repas_id: cible }
   },

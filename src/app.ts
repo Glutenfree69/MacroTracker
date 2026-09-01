@@ -22,6 +22,7 @@ type Modale =
   | { type: 'recherche'; repas: number | null }
   | { type: 'quantite'; repas: number | null; ing: Ing }
   | { type: 'manuel'; repas: number | null }
+  | { type: 'libre'; repas: number | null; nom: string }
   | { type: 'copier' }
 
 const MACROS = [
@@ -36,6 +37,11 @@ const r0 = (n: number) => Math.round(n).toString()
 const esc = (s: unknown) =>
   String(s).replace(/[&<>"']/g, (c) =>
     ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]!)
+/** Accents et casse gommés des deux côtés de la comparaison : « poelee » doit
+    trouver « Poêlée », et « pâtes » trouver « Pates ». Les noms de la base sont
+    eux-mêmes inconstants en accentuation, la requête ne peut pas être seule à
+    faire l'effort. */
+const sansAccent = (s: string) => s.normalize('NFD').replace(/\p{Diacritic}/gu, '').toLowerCase()
 const dateFr = (j: string) =>
   new Date(j + 'T12:00:00').toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })
 const depuisTexte = (iso: string) => {
@@ -55,6 +61,9 @@ const doux = matchMedia('(prefers-reduced-motion: reduce)').matches
 
 let jour = iso(new Date())
 let ingredients: Ing[] = []
+// Nom + catégorie normalisés, calculés une fois par chargement plutôt qu'à
+// chaque frappe. Clé = ingredient.id.
+let indexRecherche = new Map<string, string>()
 let lignes: Ligne[] = []
 let repasDuJour: Repas[] = []
 let poidsDuJour: number | null = null
@@ -81,10 +90,16 @@ async function charger() {
 /** Remplace la base locale par ces octets (restauration manuelle ou pull Drive). */
 async function appliquerRestauration(octets: Uint8Array) {
   await call('importer', { octets })
-  ingredients = await call<Ing[]>('ingredients')
+  poserIngredients(await call<Ing[]>('ingredients'))
   precedent = { kcal: 0, arcs: [0, 0, 0] }
   animerLignes = true
   await charger()
+}
+
+/** Seul point d'entrée pour poser la liste d'ingrédients : l'index suit. */
+function poserIngredients(liste: Ing[]) {
+  ingredients = liste
+  indexRecherche = new Map(liste.map((i) => [i.id, sansAccent(`${i.nom} ${i.categorie}`)]))
 }
 
 function total(cle: 'kcal' | 'proteines' | 'glucides' | 'lipides' | 'fibres') {
@@ -206,7 +221,7 @@ function sectionRepas(r: Repas | { id: null; ordre: number }, rang: number) {
             <button class="ligne__nom" data-detail aria-expanded="false">
               ${esc(l.nom)}<span class="ligne__fleche" aria-hidden="true">⌄</span>
             </button>
-            <span class="ligne__g chiffre">${l.uber_eats ? '🛵' : `${r0(l.grammes)} g`}</span>
+            <span class="ligne__g chiffre">${l.uber_eats ? '🛵' : l.grammes ? `${r0(l.grammes)} g` : '✎'}</span>
             <span class="ligne__kcal chiffre">${r0(l.kcal)}</span>
             <button class="retirer" data-id="${l.id}" aria-label="Retirer ${esc(l.nom)}">×</button>
             <ul class="ligne__macros">
@@ -270,13 +285,17 @@ function panneauRecherche(repas: number | null) {
   let visibles: Ing[] = []
 
   const filtrer = () => {
-    const q = champ.value.trim().toLowerCase()
+    const q = sansAccent(champ.value.trim())
     visibles = ingredients
-      .filter((i) => !q || i.nom.toLowerCase().includes(q) || i.categorie.toLowerCase().includes(q))
+      .filter((i) => !q || indexRecherche.get(i.id)!.includes(q))
       .slice(0, 50)
 
     let categorie = ''
-    liste.innerHTML = visibles.length
+    // La ligne de création reste en queue de liste quoi qu'il arrive : un aliment
+    // absent de la base ne doit pas être un cul-de-sac, que la recherche ait
+    // donné quelque chose ou non.
+    const requete = champ.value.trim()
+    liste.innerHTML = (visibles.length
       ? visibles.map((i) => {
           const tete = i.categorie === categorie ? '' : `<li class="categorie">${esc(categorie = i.categorie)}</li>`
           return `${tete}<li><button data-id="${esc(i.id)}">
@@ -284,16 +303,23 @@ function panneauRecherche(repas: number | null) {
             <span class="apercu chiffre">${r0(i.kcal)} kcal · ${i.proteines.toFixed(1)} P</span>
           </button></li>`
         }).join('')
-      : `<li class="vide">Rien ne correspond.<br>Ajoute-le dans <code>data/ingredients.yaml</code>, pousse, et recharge.</li>`
+      : `<li class="vide">Rien ne correspond.</li>`)
+      + `<li class="creer"><button data-creer>+ Aliment libre${
+          requete ? ` « ${esc(requete)} »` : ''}</button></li>`
 
-    liste.querySelectorAll<HTMLButtonElement>('button').forEach((b) => {
+    liste.querySelectorAll<HTMLButtonElement>('button[data-id]').forEach((b) => {
       b.onclick = () => choisir(ingredients.find((i) => i.id === b.dataset.id)!)
     })
+    liste.querySelector<HTMLButtonElement>('[data-creer]')!.onclick = creerLibre
   }
   const choisir = (ing: Ing) => ouvrir({ type: 'quantite', repas, ing })
+  const creerLibre = () => ouvrir({ type: 'libre', repas, nom: champ.value.trim() })
 
   champ.oninput = filtrer
-  champ.onkeydown = (e) => { if (e.key === 'Enter' && visibles.length) choisir(visibles[0]) }
+  champ.onkeydown = (e) => {
+    if (e.key !== 'Enter') return
+    visibles.length ? choisir(visibles[0]) : creerLibre()
+  }
   filtrer()
   setTimeout(() => champ.focus(), 30)
   return node
@@ -350,6 +376,72 @@ function panneauQuantite(repas: number | null, ing: Ing) {
   return node
 }
 
+/** Aliment absent de la base, tapé sur le moment : on recopie les totaux lus
+    sur une étiquette ou une appli, sans pesée et sans rien mémoriser. Le
+    grammage reste à 0 — c'est ce qui distingue la ligne à l'affichage. */
+function panneauLibre(repas: number | null, nomInitial: string) {
+  const node = feuille(`
+    <header class="feuille__tete">
+      <button data-retour aria-label="Revenir à la liste">‹</button>
+      <h2>Aliment libre</h2>
+      <button data-fermer aria-label="Fermer">×</button>
+    </header>
+    <div class="manuel">
+      <input class="manuel__nom" type="text" placeholder="Nom de l'aliment" autocomplete="off"
+             value="${esc(nomInitial)}">
+      <label class="manuel__champ"><span>Kcal</span>
+        <input type="number" inputmode="decimal" min="0" step="1" data-kcal></label>
+      <label class="manuel__champ"><span>Protéines (g)</span>
+        <input type="number" inputmode="decimal" min="0" step="0.1" data-proteines></label>
+      <label class="manuel__champ"><span>Glucides (g)</span>
+        <input type="number" inputmode="decimal" min="0" step="0.1" data-glucides></label>
+      <label class="manuel__champ"><span>Lipides (g)</span>
+        <input type="number" inputmode="decimal" min="0" step="0.1" data-lipides></label>
+      <label class="manuel__champ"><span>Fibres (g)</span>
+        <input type="number" inputmode="decimal" min="0" step="0.1" data-fibres></label>
+    </div>
+    <div class="calcul"></div>
+    <button class="valider">Ajouter au repas</button>`, 'Aliment libre')
+
+  const nom = node.querySelector<HTMLInputElement>('.manuel__nom')!
+  const apercu = node.querySelector<HTMLDivElement>('.calcul')!
+  const champ = (cle: string) => node.querySelector<HTMLInputElement>(`[data-${cle}]`)!
+  const lire = (cle: string) => parseFloat(champ(cle).value) || 0
+
+  // Rien à calculer, contrairement à la pesée : juste l'écho de ce qui est tapé,
+  // pour se relire avant de valider.
+  const rafraichir = () => {
+    apercu.innerHTML = MACROS.map((m) =>
+      `<span><span class="pastille pastille--${m.cle}"></span>${lire(m.cle).toFixed(1)} g</span>`
+    ).join('') + `<strong class="chiffre">${r0(lire('kcal'))} kcal</strong>`
+  }
+
+  const valider = async () => {
+    const titre = nom.value.trim()
+    const k = parseFloat(champ('kcal').value) // pas lire() : un champ vide doit bloquer
+    if (!titre || !(k >= 0)) return
+    modale = null
+    animerLignes = false
+    await call('ajouterManuel', {
+      jour, repas_id: repas, nom: titre, kcal: k,
+      proteines: lire('proteines'), glucides: lire('glucides'),
+      lipides: lire('lipides'), fibres: lire('fibres'),
+    })
+    charger()
+  }
+
+  node.querySelectorAll<HTMLInputElement>('input').forEach((i) => {
+    i.oninput = rafraichir
+    i.onkeydown = (e) => { if (e.key === 'Enter') valider() }
+  })
+  rafraichir()
+  setTimeout(() => { nom.focus(); nom.select() }, 30)
+  node.querySelector<HTMLButtonElement>('.valider')!.onclick = valider
+  node.querySelector<HTMLButtonElement>('[data-retour]')!.onclick = () =>
+    ouvrir({ type: 'recherche', repas })
+  return node
+}
+
 /** Repas saisi à la main (Uber Eats…) : pas de recherche, pas de pesée — les
     macros sont recopiées telles quelles depuis l'appli de livraison. */
 function panneauManuel(repas: number | null) {
@@ -388,6 +480,7 @@ function panneauManuel(repas: number | null) {
       proteines: parseFloat(proteines.value) || 0,
       glucides: parseFloat(glucides.value) || 0,
       lipides: parseFloat(lipides.value) || 0,
+      uber_eats: 1,
     })
     charger()
   }
@@ -448,6 +541,7 @@ function panneau() {
     case 'recherche': return panneauRecherche(modale.repas)
     case 'quantite': return panneauQuantite(modale.repas, modale.ing)
     case 'manuel': return panneauManuel(modale.repas)
+    case 'libre': return panneauLibre(modale.repas, modale.nom)
     case 'copier': return panneauCopier()
   }
 }
@@ -777,7 +871,7 @@ document.addEventListener('keydown', (e) => {
 ;(async () => {
   try {
     await demarrer()
-    ingredients = await call<Ing[]>('ingredients')
+    poserIngredients(await call<Ing[]>('ingredients'))
     await navigator.storage?.persist?.()
     surModification(planifierSync)
     surModification(chargerMoyenne)

@@ -354,6 +354,13 @@ button:disabled { opacity: 0.25; cursor: default; }
 .apercu { color: var(--sourdine); font-size: 0.78rem; white-space: nowrap; }
 .vide { color: var(--sourdine); font-size: 0.85rem; padding: 1.5rem 0; text-align: center; }
 .vide code { font-family: var(--mono); color: var(--glucides); }
+/* Créer un aliment absent de la base : toujours en queue de résultats, assez
+   discret pour ne pas concurrencer la liste, assez visible pour être trouvé. */
+.creer button {
+  border-bottom: 0; border-top: 1px dashed var(--trait);
+  color: var(--sourdine); font-size: 0.85rem; margin-top: 0.4rem;
+}
+.creer button:hover { color: var(--proteines); }
 .note { color: var(--sourdine); font-size: 0.8rem; margin-bottom: 0.8rem; }
 
 .pese { display: flex; align-items: baseline; gap: 0.5rem; }

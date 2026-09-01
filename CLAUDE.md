@@ -24,6 +24,8 @@ plutôt que de deviner.
 | Macros | saisies **pour 100 g**, quantité pesée en grammes au logging |
 | kcal | **saisies**, pas dérivées du 4/4/9 — l'étiquette fait foi, Atwater ne sert qu'à valider |
 | Aliments | vivent dans `data/ingredients.yaml`, versionnés par git, validés par la CI |
+| Aliment libre | échappatoire depuis la recherche : nom + macros en **totaux absolus**, `grammes = 0`, rien n'est mémorisé pour la fois d'après |
+| Recherche | insensible aux accents et à la casse des deux côtés — les noms de la base sont eux-mêmes inconstants (`Poêlée` vs `Pates`) |
 | Repas | génériques et illimités, `repas(id, jour, ordre)`, libellés « Repas N » par rang |
 | Poids | une pesée facultative par jour (table `poids`), pas d'historique de correction — la dernière valeur écrase |
 | Objectifs | aucun pour l'instant — pas de cible journalière, pas de barre de progression |
