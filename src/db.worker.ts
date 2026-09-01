@@ -248,6 +248,19 @@ const ops: Record<string, (a: any) => any> = {
        WHERE jour BETWEEN ? AND ? GROUP BY jour`, [debut, fin],
     ),
 
+  /** Repartir de zéro : vide le journal (repas, lignes, pesées). Les
+      ingrédients ne bougent pas, ils viennent du build et non de la saisie. */
+  reinitialiser: () => {
+    db.transaction(() => {
+      exec('DELETE FROM ligne')
+      exec('DELETE FROM repas')
+      exec('DELETE FROM poids')
+      exec(`DELETE FROM sqlite_sequence WHERE name IN ('ligne', 'repas')`)
+    })
+    exec('VACUUM') // hors transaction : SQLite le refuse dedans
+    return { ok: true }
+  },
+
   /** Le fichier .sqlite brut — à archiver, ou à ouvrir avec `sqlite3` sur le Mac. */
   exporter: () => pool.exportFile('/macros.sqlite'),
 

@@ -681,6 +681,7 @@ function pied() {
       <button data-copier>Recopier un repas</button>
       <button data-export>Exporter</button>
       <button data-import>Restaurer</button>
+      <button data-reset class="pied__danger">Repartir de zéro</button>
       ${etat.disponible ? `
         <button data-drive>${
           etat.reconnexionRequise ? 'Se reconnecter à Drive'
@@ -722,6 +723,17 @@ function pied() {
       }
     }
     fichier.value = '' // sinon re-choisir le même fichier ne déclenche rien
+  }
+
+  // Table rase : les aliments restent (ils viennent du build), tout le journal
+  // part. 'reinitialiser' est dans OPS_ECRITURE, donc la base vide remonte
+  // aussi sur Drive — sinon la prochaine synchro rapatrierait tout.
+  node.querySelector<HTMLButtonElement>('[data-reset]')!.onclick = async () => {
+    if (!confirm('Effacer tous les repas et toutes les pesées ?\nLes aliments sont conservés. C\'est irréversible.')) return
+    await call('reinitialiser')
+    precedent = { kcal: 0, arcs: [0, 0, 0] }
+    animerLignes = true
+    await charger()
   }
   return node
 }

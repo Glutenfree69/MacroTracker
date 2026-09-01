@@ -419,6 +419,7 @@ button:disabled { opacity: 0.25; cursor: default; }
 }
 .pied button { font-size: 0.78rem; color: var(--sourdine); transition: color 0.15s; }
 .pied button:hover { color: var(--texte); }
+.pied__danger, .pied__danger:hover { color: var(--lipides); }
 .pied__etat { font-size: 0.78rem; color: var(--sourdine); align-self: center; }
 .pied__etat--erreur { color: var(--lipides); }
 
