@@ -155,6 +155,24 @@
   lipides: 2.7
   fibres: 2.7 
 
+- id: miel
+  nom: Miel
+  categorie: sucre
+  kcal: 310
+  proteines: 0.0
+  glucides: 82
+  lipides: 0.0
+  fibres: 0.0
+
+- id: banania
+  nom: Banania
+  categorie: sucre
+  kcal: 373
+  proteines: 5.6
+  glucides: 79
+  lipides: 2.2
+  fibres: 6.7 
+
 - id: riz_basmati_cuit
   nom: Riz basmati (cuit)
   categorie: feculents
