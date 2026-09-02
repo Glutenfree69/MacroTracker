@@ -183,6 +183,15 @@
   fibres: 0.5
   note: "349 kcal/100 g cru ÷ 2.5 de rendement"
 
+- id: patates_surgelé
+  nom: Patate carré surgelé
+  categorie: feculents
+  kcal: 127
+  proteines: 2.3
+  glucides: 21
+  lipides: 3.1
+  fibres: 2.7
+
 - id: pates_konjak
   nom: Pates konjac
   categorie: feculents
@@ -306,6 +315,15 @@
   glucides: 5.2
   lipides: 0.0
   fibres: 2.9
+
+- id: poivrons
+  nom: Poivrons surgelé
+  categorie: legumes
+  kcal: 26
+  proteines: 0.8
+  glucides: 3.7
+  lipides: 0.0
+  fibres: 1.7
 
 - id: poelee_champetre
   nom: Poêlée champètre surgelé Lidl
