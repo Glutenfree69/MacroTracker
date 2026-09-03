@@ -33,6 +33,15 @@
   lipides: 1.7
   fibres: 0.0  
 
+- id: poulet_cuisse_desossees
+  nom: Cuisse de poulet désossées sans peau
+  categorie: proteines
+  kcal: 130
+  proteines: 19
+  glucides: 0.0
+  lipides: 6.0
+  fibres: 0.0  
+
 - id: filet_mignon
   nom: Filet mignon de porc
   categorie: proteines
