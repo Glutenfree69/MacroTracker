@@ -72,14 +72,23 @@
   lipides: 0.0
   fibres: 0.0
 
-- id: barre_proteine
-  nom: Barre protéine barebells
+- id: barre_proteine_peanut
+  nom: Barre protéine barebells chocolat peanut
   categorie: proteines
   kcal: 394
   proteines: 29
   glucides: 29
   lipides: 20
   fibres: 11
+
+- id: barre_proteine_coco
+  nom: Barre protéine barebells chocolat coco
+  categorie: proteines
+  kcal: 394
+  proteines: 29
+  glucides: 36
+  lipides: 20
+  fibres: 2.4
 
 - id: carre_frais
   nom: Carré frais ail et fines herbes
