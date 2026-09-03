@@ -9,3 +9,6 @@ public/ingredients.json
 
 # Exports de la base de repas, s'ils atterrissent ici.
 *.sqlite
+
+# Truc
+zzz.txt
