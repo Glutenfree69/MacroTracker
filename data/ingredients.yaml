@@ -370,6 +370,15 @@
   lipides: 3.1
   fibres: 2.2
 
+- id: sauce_truffle_mayo
+  nom: Truffle mayo low cal
+  categorie: sauce
+  kcal: 105
+  proteines: 0
+  glucides: 5
+  lipides: 8.7
+  fibres: 0
+
 - id: banane
   nom: Banane
   categorie: fruits
