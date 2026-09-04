@@ -62,7 +62,7 @@ function chargerGis(): Promise<void> {
     s.src = 'https://accounts.google.com/gsi/client'
     s.async = true
     s.onload = () => resolve()
-    s.onerror = () => reject(new Error('Impossible de charger Google Identity Services'))
+    s.onerror = () => { gisCharge = null; reject(new Error('Google Identity Services bloqué (bloqueur de pub / navigation privée ?)')) }
     document.head.appendChild(s)
   })
   return gisCharge
@@ -80,17 +80,28 @@ async function obtenirTokenClient() {
   return tokenClient
 }
 
+const MESSAGES_GIS: Record<string, string> = {
+  popup_failed_to_open: "La fenêtre Google ne s'est pas ouverte : autorise les pop-ups pour ce site.",
+  popup_closed: 'Connexion Google annulée.',
+}
+
 // Un seul token client réutilisé : le callback est réassigné à chaque appel,
 // c'est le pattern documenté par Google pour distinguer plusieurs flux.
 function demanderToken(prompt: '' | 'none'): Promise<{ access_token: string; expires_in: number }> {
   return new Promise((resolve, reject) => {
-    obtenirTokenClient().then((client) => {
+    const lancer = (client: any) => {
       client.callback = (reponse: any) =>
         reponse.error ? reject(new Error(reponse.error)) : resolve(reponse)
       client.error_callback = (err: any) =>
-        reject(new Error(err?.message ?? err?.type ?? "Échec de l'authentification Google"))
+        reject(new Error(MESSAGES_GIS[err?.type] ?? err?.message ?? err?.type ?? "Échec de l'authentification Google"))
       client.requestAccessToken({ prompt })
-    }, reject)
+    }
+    // Chemin synchrone quand GIS est déjà là : requestAccessToken ouvre une
+    // popup, et Safari iOS ne l'autorise que dans le tick du clic. Attendre le
+    // chargement du script d'abord = popup bloquée sans un mot (voir
+    // preparerDrive(), qui précharge justement pour rester sur ce chemin).
+    if (tokenClient) lancer(tokenClient)
+    else obtenirTokenClient().then(lancer, reject)
   })
 }
 
@@ -250,6 +261,12 @@ async function resoudreFraicheur(): Promise<void> {
   }
   erreur = null
   notifier()
+}
+
+/** Charge GIS au démarrage pour que le clic « Connecter » n'attende rien. */
+export function preparerDrive(): void {
+  if (!CLIENT_ID) return
+  obtenirTokenClient().catch(() => {}) // silencieux : l'échec se dira au clic
 }
 
 export async function initialiserDrive(): Promise<void> {

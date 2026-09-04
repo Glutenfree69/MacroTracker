@@ -1,6 +1,7 @@
 import { call, demarrer, surModification } from './db'
 import {
-  connecter, deconnecter, etatDrive, initialiserDrive, planifierSync, surChangementEtat, surImportDistant,
+  connecter, deconnecter, etatDrive, initialiserDrive, planifierSync, preparerDrive,
+  surChangementEtat, surImportDistant,
 } from './drive'
 import './style.css'
 
@@ -50,7 +51,9 @@ const depuisTexte = (iso: string) => {
 }
 const texteEtatDrive = (etat: ReturnType<typeof etatDrive>) =>
   etat.reconnexionRequise ? 'reconnexion nécessaire'
-  : etat.erreur ? 'erreur de synchro'
+  // Pas encore connecté + erreur = la connexion elle-même a échoué : le message
+  // brut est la seule piste, surtout sur téléphone où il n'y a pas de console.
+  : etat.erreur ? (etat.connecte ? 'erreur de synchro' : etat.erreur)
   : etat.enAttente ? 'en attente…'
   : etat.dernierSyncLe ? `synchronisé ${depuisTexte(etat.dernierSyncLe)}`
   : 'connecté'
@@ -746,13 +749,17 @@ function pied() {
           : etat.connecte ? 'Déconnecter Drive'
           : 'Connecter Drive'
         }</button>
-        ${etat.connecte ? `<span class="pied__etat ${etat.erreur ? 'pied__etat--erreur' : ''}">
-          Drive : ${texteEtatDrive(etat)}</span>` : ''}
+        ${etat.connecte || etat.erreur ? `<span class="pied__etat ${
+          etat.erreur ? 'pied__etat--erreur' : ''}" data-drive-etat></span>` : ''}
       ` : ''}
       <input type="file" accept=".sqlite,.db" hidden data-fichier>
     </footer>`)
 
   node.querySelector<HTMLButtonElement>('[data-copier]')!.onclick = () => ouvrir({ type: 'copier' })
+
+  // textContent : le message d'erreur vient de Google, jamais dans du innerHTML.
+  const etatDriveNode = node.querySelector<HTMLElement>('[data-drive-etat]')
+  if (etatDriveNode) etatDriveNode.textContent = `Drive : ${texteEtatDrive(etat)}`
 
   node.querySelector<HTMLButtonElement>('[data-drive]')?.addEventListener('click', () => {
     etat.connecte && !etat.reconnexionRequise ? deconnecter() : connecter()
@@ -845,6 +852,7 @@ document.addEventListener('keydown', (e) => {
     await charger()
     chargerMoisCalendrier().catch(() => {}) // ne bloque jamais le premier rendu
     chargerMoyenne().catch(() => {})
+    preparerDrive()
     initialiserDrive().catch(() => {})
   } catch (err: any) {
     const message = String(err?.message ?? err)
