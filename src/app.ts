@@ -588,7 +588,7 @@ function calendrier() {
           return `<button class="calendrier__case ${actif ? 'calendrier__case--actif' : ''} ${estAuj && !actif ? 'calendrier__case--auj' : ''} ${marque ? 'calendrier__case--marque' : ''}"
                     data-jour="${j}" ${futur ? 'disabled' : ''} aria-current="${estAuj ? 'date' : 'false'}"
                     aria-label="${esc(dateFr(j))}${logge ? ', repas loggés' : ''}${marque ? ', jour marqué' : ''}">
-                    ${Number(j.slice(8))}${logge ? '<span class="calendrier__pastille"></span>' : ''}
+                    ${Number(j.slice(8))}${logge || marque ? '<span class="calendrier__pastille"></span>' : ''}
                   </button>`
         }).join('')}
       </div>

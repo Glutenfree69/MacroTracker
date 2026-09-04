@@ -16,7 +16,7 @@
   --fibres: #7f93b8;
   /* Hors palette macro : la seule couleur qui ne parle pas de nutriment, elle
      ne sert qu'au drapeau posé sur une journée. */
-  --marque: #e8663c;
+  --marque: #e8443c;
 
   --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
   --texte-face: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
@@ -126,16 +126,14 @@ button:disabled { opacity: 0.25; cursor: default; }
 .calendrier__case:disabled { color: var(--sourdine); opacity: 0.3; cursor: default; }
 .calendrier__case--auj { box-shadow: inset 0 0 0 1px var(--proteines); }
 .calendrier__case--actif { background: var(--proteines); color: #0b0f14; font-weight: 600; }
-/* Marquée : teintée. Sélectionnée en plus : pleine — la sélection dit l'aplat,
-   la marque dit la teinte, les deux tiennent dans la même case. */
-.calendrier__case--marque { background: rgba(232, 102, 60, 0.18); color: var(--marque); font-weight: 600; }
-.calendrier__case--marque:not(:disabled):hover { background: rgba(232, 102, 60, 0.3); }
-.calendrier__case--actif.calendrier__case--marque { background: var(--marque); color: #0b0f14; }
 
 .calendrier__pastille {
   position: absolute; bottom: 3px; width: 4px; height: 4px; border-radius: 50%; background: var(--proteines);
 }
 .calendrier__case--actif .calendrier__pastille { background: #0b0f14; }
+/* Après la règle du jour sélectionné : la marque doit rester lisible même sur
+   la case pleine, un point rouge sur le vert se voit très bien. */
+.calendrier__case--marque .calendrier__pastille { background: var(--marque); }
 
 /* ── Moyenne calorique (marge droite, écrans larges) ─────────────── */
 .moyenne {
