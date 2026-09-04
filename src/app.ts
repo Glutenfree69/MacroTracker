@@ -492,9 +492,6 @@ function panneauManuel(repas: number | null) {
 
 /** Recopier un repas d'un autre jour. Sans ça, on tient deux semaines. */
 function panneauCopier() {
-  const veille = new Date(jour + 'T12:00:00')
-  veille.setDate(veille.getDate() - 1)
-
   const node = feuille(`
     <header class="feuille__tete">
       <h2>Recopier un repas</h2>
@@ -503,7 +500,7 @@ function panneauCopier() {
     <div class="reglages">
       <label class="reglage">
         <span>Depuis le jour</span>
-        <span class="reglage__saisie"><input type="date" data-depuis value="${iso(veille)}" max="${jour}"></span>
+        <span class="reglage__saisie"><input type="date" data-depuis value="${jour}" max="${jour}"></span>
       </label>
     </div>
     <ul class="resultats" data-liste></ul>`, 'Recopier un repas')
