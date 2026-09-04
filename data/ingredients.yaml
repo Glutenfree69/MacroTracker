@@ -378,6 +378,15 @@
   lipides: 8.7
   fibres: 0
 
+- id: sauce_teriyaki
+  nom: Sauce teriyaki low cal
+  categorie: sauce
+  kcal: 29
+  proteines: 2.6
+  glucides: 7.3
+  lipides: 0
+  fibres: 0
+
 - id: banane
   nom: Banane
   categorie: fruits
