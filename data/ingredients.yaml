@@ -191,15 +191,14 @@
   lipides: 2.2
   fibres: 6.7 
 
-- id: riz_basmati_cuit
-  nom: Riz basmati (cuit)
+- id: riz_cru
+  nom: Riz sushi cru
   categorie: feculents
-  kcal: 140
-  proteines: 3.2
-  glucides: 30.9
-  lipides: 0.4
+  kcal: 345
+  proteines: 5.8
+  glucides: 77.5
+  lipides: 1
   fibres: 0.5
-  note: "349 kcal/100 g cru ÷ 2.5 de rendement"
 
 - id: patates_surgele
   nom: Patate carré surgelé
