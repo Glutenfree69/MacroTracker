@@ -51,9 +51,9 @@ const depuisTexte = (iso: string) => {
 }
 const texteEtatDrive = (etat: ReturnType<typeof etatDrive>) =>
   etat.reconnexionRequise ? 'reconnexion nécessaire'
-  // Pas encore connecté + erreur = la connexion elle-même a échoué : le message
-  // brut est la seule piste, surtout sur téléphone où il n'y a pas de console.
-  : etat.erreur ? (etat.connecte ? 'erreur de synchro' : etat.erreur)
+  // Le message brut, connecté ou non : sur téléphone il n'y a pas de console,
+  // « erreur de synchro » ne dit rien de ce qui a réellement cassé.
+  : etat.erreur ? etat.erreur
   : etat.enAttente ? 'en attente…'
   : etat.dernierSyncLe ? `synchronisé ${depuisTexte(etat.dernierSyncLe)}`
   : 'connecté'

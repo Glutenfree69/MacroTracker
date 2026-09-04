@@ -128,7 +128,12 @@ async function requeteDrive(url: string, options: RequestInit = {}): Promise<Res
     ...options,
     headers: { ...options.headers, Authorization: `Bearer ${token}` },
   })
-  if (!res.ok) throw new Error(`Drive ${res.status} : ${await res.text()}`)
+  if (!res.ok) {
+    const corps = await res.text()
+    let detail = corps.slice(0, 200)
+    try { detail = JSON.parse(corps)?.error?.message ?? detail } catch {}
+    throw new Error(`Drive ${res.status} — ${detail}`)
+  }
   return res
 }
 
@@ -175,6 +180,11 @@ async function telechargerDrive(fileId: string): Promise<Uint8Array> {
 
 /* ── Flux exposés ────────────────────────────────────────────────── */
 
+/** Préfixe l'erreur par l'étape : « import local : ... » plutôt qu'un message nu. */
+function etape<T>(nom: string, p: Promise<T>): Promise<T> {
+  return p.catch((e: any) => { throw new Error(`${nom} : ${e?.message ?? e}`) })
+}
+
 export async function connecter(): Promise<void> {
   erreur = null
   try {
@@ -183,10 +193,11 @@ export async function connecter(): Promise<void> {
     reconnexionRequise = false
     localStorage.setItem(CLE_CONNECTE, '1')
 
-    let fileId = localStorage.getItem(CLE_FILE_ID) ?? (await chercherFichierExistant())
+    let fileId = localStorage.getItem(CLE_FILE_ID)
+      ?? (await etape('recherche du fichier', chercherFichierExistant()))
     if (!fileId) {
-      const octets = await call<Uint8Array>('exporter')
-      const cree = await creerFichierDrive(octets)
+      const octets = await etape('export local', call<Uint8Array>('exporter'))
+      const cree = await etape('création du fichier', creerFichierDrive(octets))
       fileId = cree.id
       localStorage.setItem(CLE_DERNIER_SYNC, cree.modifiedTime)
     }
@@ -247,15 +258,17 @@ async function resoudreFraicheur(): Promise<void> {
   const fileId = localStorage.getItem(CLE_FILE_ID)
   if (!fileId) { await synchroniser(); return }
 
-  const driveTime = await fraicheurDrive(fileId)
+  const driveTime = await etape('lecture de la date Drive', fraicheurDrive(fileId))
   const enAttenteLe = localStorage.getItem(CLE_EN_ATTENTE)
   const localTime = enAttenteLe ?? localStorage.getItem(CLE_DERNIER_SYNC)
 
   if (!localTime || new Date(driveTime).getTime() > new Date(localTime).getTime()) {
-    const octets = await telechargerDrive(fileId)
+    const octets = await etape('téléchargement', telechargerDrive(fileId))
+    // L'import n'est marqué comme fait qu'après coup : s'il échoue, la prochaine
+    // ouverture retentera au lieu de croire la base locale à jour.
+    await etape('import local', Promise.resolve(onImportDistant?.(octets)))
     localStorage.setItem(CLE_DERNIER_SYNC, driveTime)
     localStorage.removeItem(CLE_EN_ATTENTE)
-    await onImportDistant?.(octets)
   } else if (enAttenteLe || new Date(localTime).getTime() > new Date(driveTime).getTime()) {
     await synchroniser()
   }

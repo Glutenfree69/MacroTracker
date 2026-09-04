@@ -432,7 +432,12 @@ button:disabled { opacity: 0.25; cursor: default; }
 .pied button:hover { color: var(--texte); }
 .pied__danger, .pied__danger:hover { color: var(--lipides); }
 .pied__etat { font-size: 0.78rem; color: var(--sourdine); align-self: center; }
-.pied__etat--erreur { color: var(--lipides); }
+/* Un message d'erreur Drive est verbeux : il prend sa propre ligne plutôt que
+   de pousser les boutons hors de l'écran sur téléphone. */
+.pied__etat--erreur {
+  color: var(--lipides); flex-basis: 100%; align-self: flex-start;
+  line-height: 1.4; overflow-wrap: anywhere;
+}
 
 .panne { padding: 4rem 0; max-width: 26rem; margin: 0 auto; }
 .panne h2 { font-size: 1.05rem; margin-bottom: 0.75rem; }
