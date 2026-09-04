@@ -122,6 +122,10 @@ async function jetonValide(): Promise<string> {
 /* ── Appels REST Drive ──────────────────────────────────────────────
    fetch direct, CORS natif sur www.googleapis.com : aucun proxy serveur. */
 
+class ErreurDrive extends Error {
+  constructor(readonly statut: number, message: string) { super(message) }
+}
+
 async function requeteDrive(url: string, options: RequestInit = {}): Promise<Response> {
   const token = await jetonValide()
   const res = await fetch(url, {
@@ -132,7 +136,7 @@ async function requeteDrive(url: string, options: RequestInit = {}): Promise<Res
     const corps = await res.text()
     let detail = corps.slice(0, 200)
     try { detail = JSON.parse(corps)?.error?.message ?? detail } catch {}
-    throw new Error(`Drive ${res.status} — ${detail}`)
+    throw new ErreurDrive(res.status, `Drive ${res.status} — ${detail}`)
   }
   return res
 }
@@ -185,6 +189,25 @@ function etape<T>(nom: string, p: Promise<T>): Promise<T> {
   return p.catch((e: any) => { throw new Error(`${nom} : ${e?.message ?? e}`) })
 }
 
+const estIntrouvable = (e: unknown) => e instanceof ErreurDrive && e.statut === 404
+
+function oublierFichier() {
+  localStorage.removeItem(CLE_FILE_ID)
+  localStorage.removeItem(CLE_DERNIER_SYNC)
+}
+
+/** modifiedTime du fichier, ou null si l'id mémorisé ne désigne plus rien —
+ *  auquel cas il est oublié pour de bon. */
+async function fraicheurOuOubli(fileId: string): Promise<string | null> {
+  try {
+    return await etape('lecture de la date Drive', fraicheurDrive(fileId))
+  } catch (e) {
+    if (!estIntrouvable(e)) throw e
+    oublierFichier()
+    return null
+  }
+}
+
 export async function connecter(): Promise<void> {
   erreur = null
   try {
@@ -192,16 +215,6 @@ export async function connecter(): Promise<void> {
     jeton = { valeur: reponse.access_token, expireLe: Date.now() + reponse.expires_in * 1000 }
     reconnexionRequise = false
     localStorage.setItem(CLE_CONNECTE, '1')
-
-    let fileId = localStorage.getItem(CLE_FILE_ID)
-      ?? (await etape('recherche du fichier', chercherFichierExistant()))
-    if (!fileId) {
-      const octets = await etape('export local', call<Uint8Array>('exporter'))
-      const cree = await etape('création du fichier', creerFichierDrive(octets))
-      fileId = cree.id
-      localStorage.setItem(CLE_DERNIER_SYNC, cree.modifiedTime)
-    }
-    localStorage.setItem(CLE_FILE_ID, fileId)
     notifier()
     await resoudreFraicheur()
   } catch (e: any) {
@@ -233,15 +246,22 @@ export async function synchroniser(): Promise<void> {
   if (syncEnCours || localStorage.getItem(CLE_CONNECTE) !== '1') return
   syncEnCours = true
   try {
-    const octets = await call<Uint8Array>('exporter')
-    let fileId = localStorage.getItem(CLE_FILE_ID)
-    const resultat = fileId
-      ? await mettreAJourFichierDrive(fileId, octets)
-      : await creerFichierDrive(octets).then((cree) => {
-          fileId = cree.id
-          localStorage.setItem(CLE_FILE_ID, fileId)
-          return cree
-        })
+    const octets = await etape('export local', call<Uint8Array>('exporter'))
+    const fileId = localStorage.getItem(CLE_FILE_ID)
+    let resultat: { modifiedTime: string } | null = null
+    if (fileId) {
+      try {
+        resultat = await etape('envoi', mettreAJourFichierDrive(fileId, octets))
+      } catch (e) {
+        if (!estIntrouvable(e)) throw e
+        oublierFichier() // le fichier a disparu entre-temps : on en refait un
+      }
+    }
+    if (!resultat) {
+      const cree = await etape('création du fichier', creerFichierDrive(octets))
+      localStorage.setItem(CLE_FILE_ID, cree.id)
+      resultat = cree
+    }
     localStorage.setItem(CLE_DERNIER_SYNC, resultat.modifiedTime)
     localStorage.removeItem(CLE_EN_ATTENTE)
     erreur = null
@@ -255,10 +275,22 @@ export async function synchroniser(): Promise<void> {
 
 /** Le plus récent gagne, sans merge : driveTime vient de Drive lui-même (autoritatif). */
 async function resoudreFraicheur(): Promise<void> {
-  const fileId = localStorage.getItem(CLE_FILE_ID)
-  if (!fileId) { await synchroniser(); return }
+  let fileId = localStorage.getItem(CLE_FILE_ID)
+  let driveTime = fileId ? await fraicheurOuOubli(fileId) : null
 
-  const driveTime = await etape('lecture de la date Drive', fraicheurDrive(fileId))
+  // Pas d'id mémorisé, ou un id qui ne désigne plus rien (fichier supprimé de
+  // Drive, ou mémorisé sous un autre compte Google) : on cherche le fichier
+  // d'un autre appareil avant de laisser synchroniser() en créer un. Sans ça,
+  // un id mort est définitif — relu et re-404 à chaque ouverture.
+  if (!driveTime) {
+    fileId = await etape('recherche du fichier', chercherFichierExistant())
+    if (fileId) {
+      localStorage.setItem(CLE_FILE_ID, fileId)
+      driveTime = await fraicheurOuOubli(fileId)
+    }
+  }
+  if (!fileId || !driveTime) { await synchroniser(); return }
+
   const enAttenteLe = localStorage.getItem(CLE_EN_ATTENTE)
   const localTime = enAttenteLe ?? localStorage.getItem(CLE_DERNIER_SYNC)
 
