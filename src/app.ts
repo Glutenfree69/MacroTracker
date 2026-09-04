@@ -12,7 +12,6 @@ type Ing = {
 type Ligne = {
   id: number; jour: string; repas_id: number; nom: string; grammes: number
   kcal: number; proteines: number; glucides: number; lipides: number; fibres: number
-  uber_eats: number
 }
 type Repas = { id: number; ordre: number }
 type Apercu = { id: number; ordre: number; n: number; kcal: number; apercu: string | null }
@@ -21,7 +20,6 @@ type Apercu = { id: number; ordre: number; n: number; kcal: number; apercu: stri
 type Modale =
   | { type: 'recherche'; repas: number | null }
   | { type: 'quantite'; repas: number | null; ing: Ing }
-  | { type: 'manuel'; repas: number | null }
   | { type: 'libre'; repas: number | null; nom: string }
   | { type: 'copier' }
 
@@ -67,9 +65,11 @@ let indexRecherche = new Map<string, string>()
 let lignes: Ligne[] = []
 let repasDuJour: Repas[] = []
 let poidsDuJour: number | null = null
+// Drapeau libre posé sur la journée, reporté en couleur sur le calendrier.
+let marqueDuJour = false
 let modale: Modale | null = null
 
-type JourActif = { n: number; kcal: number; uberEats: boolean }
+type JourActif = { n: number; kcal: number; marque: boolean }
 let moisAffiche = jour.slice(0, 7) // 'YYYY-MM'
 let joursActifsMois = new Map<string, JourActif>()
 
@@ -80,10 +80,11 @@ let precedent = { kcal: 0, arcs: [0, 0, 0] }
 let animerLignes = true
 
 async function charger() {
-  const d = await call<{ lignes: Ligne[]; repas: Repas[]; poids: number | null }>('jour', { jour })
+  const d = await call<{ lignes: Ligne[]; repas: Repas[]; poids: number | null; marque: boolean }>('jour', { jour })
   lignes = d.lignes
   repasDuJour = d.repas
   poidsDuJour = d.poids
+  marqueDuJour = d.marque
   dessiner()
 }
 
@@ -221,7 +222,7 @@ function sectionRepas(r: Repas | { id: null; ordre: number }, rang: number) {
             <button class="ligne__nom" data-detail aria-expanded="false">
               ${esc(l.nom)}<span class="ligne__fleche" aria-hidden="true">⌄</span>
             </button>
-            <span class="ligne__g chiffre">${l.uber_eats ? '🛵' : l.grammes ? `${r0(l.grammes)} g` : '✎'}</span>
+            <span class="ligne__g chiffre">${l.grammes ? `${r0(l.grammes)} g` : '✎'}</span>
             <span class="ligne__kcal chiffre">${r0(l.kcal)}</span>
             <button class="retirer" data-id="${l.id}" aria-label="Retirer ${esc(l.nom)}">×</button>
             <ul class="ligne__macros">
@@ -442,54 +443,6 @@ function panneauLibre(repas: number | null, nomInitial: string) {
   return node
 }
 
-/** Repas saisi à la main (Uber Eats…) : pas de recherche, pas de pesée — les
-    macros sont recopiées telles quelles depuis l'appli de livraison. */
-function panneauManuel(repas: number | null) {
-  const node = feuille(`
-    <header class="feuille__tete">
-      <h2>Repas Uber Eats</h2>
-      <button data-fermer aria-label="Fermer">×</button>
-    </header>
-    <div class="manuel">
-      <input class="manuel__nom" type="text" placeholder="Nom du repas" autocomplete="off">
-      <label class="manuel__champ"><span>Kcal</span>
-        <input type="number" inputmode="decimal" min="0" step="1" data-kcal></label>
-      <label class="manuel__champ"><span>Protéines (g)</span>
-        <input type="number" inputmode="decimal" min="0" step="0.1" data-proteines></label>
-      <label class="manuel__champ"><span>Glucides (g)</span>
-        <input type="number" inputmode="decimal" min="0" step="0.1" data-glucides></label>
-      <label class="manuel__champ"><span>Lipides (g)</span>
-        <input type="number" inputmode="decimal" min="0" step="0.1" data-lipides></label>
-    </div>
-    <button class="valider">Ajouter le repas</button>`, 'Repas Uber Eats')
-
-  const nom = node.querySelector<HTMLInputElement>('.manuel__nom')!
-  const kcal = node.querySelector<HTMLInputElement>('[data-kcal]')!
-  const proteines = node.querySelector<HTMLInputElement>('[data-proteines]')!
-  const glucides = node.querySelector<HTMLInputElement>('[data-glucides]')!
-  const lipides = node.querySelector<HTMLInputElement>('[data-lipides]')!
-
-  const valider = async () => {
-    const titre = nom.value.trim()
-    const k = parseFloat(kcal.value)
-    if (!titre || !(k >= 0)) return
-    modale = null
-    animerLignes = false
-    await call('ajouterManuel', {
-      jour, repas_id: repas, nom: titre, kcal: k,
-      proteines: parseFloat(proteines.value) || 0,
-      glucides: parseFloat(glucides.value) || 0,
-      lipides: parseFloat(lipides.value) || 0,
-      uber_eats: 1,
-    })
-    charger()
-  }
-  nom.onkeydown = (e) => { if (e.key === 'Enter') valider() }
-  setTimeout(() => nom.focus(), 30)
-  node.querySelector<HTMLButtonElement>('.valider')!.onclick = valider
-  return node
-}
-
 /** Recopier un repas d'un autre jour. Sans ça, on tient deux semaines. */
 function panneauCopier() {
   const node = feuille(`
@@ -537,7 +490,6 @@ function panneau() {
   switch (modale.type) {
     case 'recherche': return panneauRecherche(modale.repas)
     case 'quantite': return panneauQuantite(modale.repas, modale.ing)
-    case 'manuel': return panneauManuel(modale.repas)
     case 'libre': return panneauLibre(modale.repas, modale.nom)
     case 'copier': return panneauCopier()
   }
@@ -584,9 +536,21 @@ async function chargerMoisCalendrier() {
   const [y, m] = cible.split('-').map(Number)
   const debut = `${cible}-01`
   const fin = `${cible}-${String(new Date(y, m, 0).getDate()).padStart(2, '0')}`
-  const res = await call<{ jour: string; n: number; kcal: number; uber_eats: number }[]>('joursEntre', { debut, fin })
+  // Deux sources : les journées qui ont des lignes, et celles simplement
+  // marquées — une journée marquée sans repas doit quand même se voir.
+  const [res, marques] = await Promise.all([
+    call<{ jour: string; n: number; kcal: number }[]>('joursEntre', { debut, fin }),
+    call<{ jour: string }[]>('marquesEntre', { debut, fin }),
+  ])
   if (cible !== moisAffiche) return // le mois a changé pendant le chargement, résultat périmé
-  joursActifsMois = new Map(res.map((l) => [l.jour, { n: l.n, kcal: l.kcal, uberEats: !!l.uber_eats }]))
+  const carte = new Map<string, JourActif>(
+    res.map((l) => [l.jour, { n: l.n, kcal: l.kcal, marque: false }]))
+  for (const { jour: j } of marques) {
+    const existant = carte.get(j)
+    if (existant) existant.marque = true
+    else carte.set(j, { n: 0, kcal: 0, marque: true })
+  }
+  joursActifsMois = carte
   dessiner()
 }
 
@@ -619,11 +583,12 @@ function calendrier() {
           if (!j) return `<span class="calendrier__case calendrier__case--vide"></span>`
           const actif = j === jour, estAuj = j === auj, futur = j > auj
           const info = joursActifsMois.get(j)
-          const logge = !!info
-          return `<button class="calendrier__case ${actif ? 'calendrier__case--actif' : ''} ${estAuj && !actif ? 'calendrier__case--auj' : ''}"
+          const logge = !!info && info.n > 0
+          const marque = !!info?.marque
+          return `<button class="calendrier__case ${actif ? 'calendrier__case--actif' : ''} ${estAuj && !actif ? 'calendrier__case--auj' : ''} ${marque ? 'calendrier__case--marque' : ''}"
                     data-jour="${j}" ${futur ? 'disabled' : ''} aria-current="${estAuj ? 'date' : 'false'}"
-                    aria-label="${esc(dateFr(j))}${logge ? ', repas loggés' : ''}${info?.uberEats ? ' (Uber Eats)' : ''}">
-                    ${Number(j.slice(8))}${logge ? `<span class="calendrier__pastille ${info!.uberEats ? 'calendrier__pastille--uber' : ''}"></span>` : ''}
+                    aria-label="${esc(dateFr(j))}${logge ? ', repas loggés' : ''}${marque ? ', jour marqué' : ''}">
+                    ${Number(j.slice(8))}${logge ? '<span class="calendrier__pastille"></span>' : ''}
                   </button>`
         }).join('')}
       </div>
@@ -716,19 +681,27 @@ function enTete() {
   return node
 }
 
-/** Facultatif — une pesée par jour, écrasée si on la ressaisit. Vide = pas notée. */
-function poidsDuJourWidget() {
+/** Ce qui décrit la journée elle-même, pas son contenu : la pesée (facultative,
+    écrasée si on la ressaisit ; vide = pas notée) et la marque, un drapeau
+    libre qui ne fait que colorer la case du calendrier. */
+function metaDuJour() {
   const node = el(`
-    <div class="poids">
-      <span>Poids</span>
-      <span class="poids__saisie">
-        <input type="number" inputmode="decimal" step="0.1" min="0"
-               placeholder="—" value="${poidsDuJour ?? ''}">
-        <span class="unite">kg</span>
-      </span>
+    <div class="jour-meta">
+      <label class="poids">
+        <span>Poids</span>
+        <span class="poids__saisie">
+          <input type="number" inputmode="decimal" step="0.1" min="0"
+                 placeholder="—" value="${poidsDuJour ?? ''}">
+          <span class="unite">kg</span>
+        </span>
+      </label>
+      <label class="marque">
+        <input type="checkbox" data-marque ${marqueDuJour ? 'checked' : ''}>
+        <span>Marquer le jour</span>
+      </label>
     </div>`)
 
-  const champ = node.querySelector<HTMLInputElement>('input')!
+  const champ = node.querySelector<HTMLInputElement>('.poids input')!
   champ.onchange = async () => {
     const v = champ.value.trim()
     const kg = v === '' ? null : parseFloat(v)
@@ -737,30 +710,24 @@ function poidsDuJourWidget() {
     await call('definirPoids', { jour, kg })
   }
   champ.onkeydown = (e) => { if (e.key === 'Enter') champ.blur() }
+
+  const marque = node.querySelector<HTMLInputElement>('[data-marque]')!
+  marque.onchange = async () => {
+    marqueDuJour = marque.checked
+    await call('definirMarque', { jour, marque: marqueDuJour }) // le calendrier se relit tout seul
+  }
   return node
 }
 
 function nouveauRepas() {
-  const node = el(`
-    <div class="nouveaux-repas">
-      <button class="nouveau-repas">+ Ajouter un repas</button>
-      <label class="uber-eats">
-        <input type="checkbox" data-uber>
-        <span>🛵 Repas Uber Eats</span>
-      </label>
-    </div>`)
-  node.querySelector<HTMLButtonElement>('.nouveau-repas')!.onclick = async () => {
+  const node = el(`<button class="nouveau-repas">+ Ajouter un repas</button>`)
+  node.onclick = async () => {
     animerLignes = false
     // Le « Repas 1 » d'une journée vide n'existe pas encore en base : on le
     // matérialise avant d'en créer un second, sinon il disparaîtrait à l'écran.
     if (!repasDuJour.length) await call('creerRepas', { jour })
     await call('creerRepas', { jour })
     charger()
-  }
-  // Pas d'état à réinitialiser : dessiner() redessine une case décochée à
-  // chaque rendu, que le panneau soit validé ou fermé.
-  node.querySelector<HTMLInputElement>('[data-uber]')!.onchange = (e) => {
-    if ((e.target as HTMLInputElement).checked) ouvrir({ type: 'manuel', repas: null })
   }
   return node
 }
@@ -847,7 +814,7 @@ function dessiner() {
     calendrier(),
     moyenneKcalWidget(),
     enTete(),
-    poidsDuJourWidget(),
+    metaDuJour(),
     couronne(),
     ...cartes.map(sectionRepas),
     nouveauRepas(),

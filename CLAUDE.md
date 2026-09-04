@@ -28,6 +28,7 @@ plutôt que de deviner.
 | Recherche | insensible aux accents et à la casse des deux côtés — les noms de la base sont eux-mêmes inconstants (`Poêlée` vs `Pates`) |
 | Repas | génériques et illimités, `repas(id, jour, ordre)`, libellés « Repas N » par rang |
 | Poids | une pesée facultative par jour (table `poids`), pas d'historique de correction — la dernière valeur écrase |
+| Marque du jour | case à cocher facultative (table `marque`, présent = marqué) : colore la case du calendrier, n'entre dans aucun total ni moyenne |
 | Objectifs | aucun pour l'instant — pas de cible journalière, pas de barre de progression |
 | Vue du jour | anneau de **répartition** (part des kcal par macro) + total au centre |
 | Stockage | SQLite en OPFS dans le navigateur (source de vérité) + synchro de secours vers Google Drive (`src/drive.ts`, OAuth2 client-side, optionnelle) |

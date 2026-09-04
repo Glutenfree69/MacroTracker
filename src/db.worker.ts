@@ -51,6 +51,10 @@ CREATE TABLE IF NOT EXISTS meta (cle TEXT PRIMARY KEY, valeur TEXT NOT NULL);
 -- écrase la valeur du jour, comme le reste de l'app ne juge pas et ne garde
 -- qu'un instantané.
 CREATE TABLE IF NOT EXISTS poids (jour TEXT PRIMARY KEY, kg REAL NOT NULL);
+
+-- Un drapeau libre par journée, sans valeur ni sens imposé : présent = marqué.
+-- Ne sert qu'à colorer la case du calendrier, ne touche à aucun total.
+CREATE TABLE IF NOT EXISTS marque (jour TEXT PRIMARY KEY);
 `
 
 function exec(sql: string, bind: any[] = []) {
@@ -89,20 +93,21 @@ function migrer() {
   })
 }
 
-/** Ajoute la colonne des repas saisis à la main (Uber Eats…) si elle manque
-    encore — SQLite autorise ADD COLUMN NOT NULL DEFAULT directement, pas
-    besoin du rebuild façon migrer(). */
-function migrerUberEats() {
+/** La colonne `uber_eats` marquait les repas de livraison saisis à la main ;
+    la distinction a disparu de l'app. On retire la colonne des bases qui l'ont
+    connue — rien d'autre ne la lisait, et les macros figées de chaque ligne ne
+    bougent pas d'un poil. Échec toléré : une colonne inerte ne gêne personne. */
+function migrerSansUberEats() {
   const colonnes = exec(`PRAGMA table_info(ligne)`).map((c: any) => c.name)
-  if (colonnes.includes('uber_eats')) return
-  exec(`ALTER TABLE ligne ADD COLUMN uber_eats INTEGER NOT NULL DEFAULT 0`)
+  if (!colonnes.includes('uber_eats')) return
+  try { exec(`ALTER TABLE ligne DROP COLUMN uber_eats`) } catch { /* on vivra avec */ }
 }
 
 function ouvrirBase() {
   db = new pool.OpfsSAHPoolDb('/macros.sqlite')
   db.exec(SCHEMA)
   migrer() // avant l'index : il porte sur une colonne que la v1 n'a pas
-  migrerUberEats()
+  migrerSansUberEats()
   db.exec(`CREATE INDEX IF NOT EXISTS idx_ligne_jour ON ligne(jour, repas_id)`)
 }
 
@@ -156,6 +161,7 @@ const ops: Record<string, (a: any) => any> = {
     repas: exec('SELECT id, ordre FROM repas WHERE jour = ? ORDER BY ordre, id', [jour]),
     lignes: exec('SELECT * FROM ligne WHERE jour = ? ORDER BY id', [jour]),
     poids: exec('SELECT kg FROM poids WHERE jour = ?', [jour])[0]?.kg ?? null,
+    marque: !!exec('SELECT 1 FROM marque WHERE jour = ?', [jour])[0],
   }),
 
   /** kg=null efface la pesée du jour — c'est un champ facultatif. */
@@ -165,6 +171,13 @@ const ops: Record<string, (a: any) => any> = {
       `INSERT INTO poids (jour, kg) VALUES (?, ?)
        ON CONFLICT(jour) DO UPDATE SET kg = excluded.kg`, [jour, kg],
     )
+    return { ok: true }
+  },
+
+  /** Le drapeau du jour : présent ou absent, rien à mettre à jour entre les deux. */
+  definirMarque: ({ jour, marque }: { jour: string; marque: boolean }) => {
+    if (marque) exec('INSERT OR IGNORE INTO marque (jour) VALUES (?)', [jour])
+    else exec('DELETE FROM marque WHERE jour = ?', [jour])
     return { ok: true }
   },
 
@@ -193,22 +206,19 @@ const ops: Record<string, (a: any) => any> = {
     return { repas_id: cible }
   },
 
-  /** Macros tapées à la main : pas d'ingrédient réel, pas de pesée — l'étiquette
-      est recopiée telle quelle. Deux appelants, un seul INSERT : le repas livré
-      (uber_eats=1, qui se signale par 🛵 et sa pastille de calendrier) et
-      l'aliment libre ajouté dans un repas ordinaire (uber_eats=0). */
+  /** Macros tapées à la main (« aliment libre ») : pas d'ingrédient réel, pas de
+      pesée — l'étiquette est recopiée telle quelle, en totaux absolus. */
   ajouterManuel: ({ jour, repas_id, nom, kcal, proteines, glucides, lipides,
-                    fibres = 0, uber_eats = 0 }: any) => {
+                    fibres = 0 }: any) => {
     const cible = repas_id ?? creerRepas(jour)
-    // Sentinelles : ingredient_id est NOT NULL et ne pointe vers rien ici, mais
+    // Sentinelle : ingredient_id est NOT NULL et ne pointe vers rien ici, mais
     // autant garder la trace de la provenance pour une analyse ultérieure.
-    const sentinelle = uber_eats ? 'manuel' : 'libre'
     exec(
       `INSERT INTO ligne (jour, repas_id, ingredient_id, nom, grammes, kcal, proteines,
-                          glucides, lipides, fibres, cree_le, uber_eats)
-       VALUES (?,?,?,?,?,?,?,?,?,?,?,?)`,
-      [jour, cible, sentinelle, nom, 0, kcal, proteines, glucides, lipides, fibres,
-       new Date().toISOString(), uber_eats],
+                          glucides, lipides, fibres, cree_le)
+       VALUES (?,?,?,?,?,?,?,?,?,?,?)`,
+      [jour, cible, 'libre', nom, 0, kcal, proteines, glucides, lipides, fibres,
+       new Date().toISOString()],
     )
     return { repas_id: cible }
   },
@@ -247,12 +257,19 @@ const ops: Record<string, (a: any) => any> = {
     return { copiees }
   },
 
-  /** Résumé jour par jour sur un intervalle — sert la grille du calendrier. */
+  /** Résumé jour par jour sur un intervalle — sert la grille du calendrier et la
+      moyenne calorique. Seules les journées qui ont des lignes en sortent : une
+      journée vide ne doit pas tirer la moyenne vers le bas. */
   joursEntre: ({ debut, fin }: { debut: string; fin: string }) =>
     exec(
-      `SELECT jour, COUNT(*) n, ROUND(SUM(kcal)) kcal, MAX(uber_eats) uber_eats FROM ligne
+      `SELECT jour, COUNT(*) n, ROUND(SUM(kcal)) kcal FROM ligne
        WHERE jour BETWEEN ? AND ? GROUP BY jour`, [debut, fin],
     ),
+
+  /** Les journées marquées de l'intervalle — à part de joursEntre, justement
+      parce qu'une journée peut être marquée sans contenir le moindre repas. */
+  marquesEntre: ({ debut, fin }: { debut: string; fin: string }) =>
+    exec('SELECT jour FROM marque WHERE jour BETWEEN ? AND ? ORDER BY jour', [debut, fin]),
 
   /** Repartir de zéro : vide le journal (repas, lignes, pesées). Les
       ingrédients ne bougent pas, ils viennent du build et non de la saisie. */
@@ -261,6 +278,7 @@ const ops: Record<string, (a: any) => any> = {
       exec('DELETE FROM ligne')
       exec('DELETE FROM repas')
       exec('DELETE FROM poids')
+      exec('DELETE FROM marque')
       exec(`DELETE FROM sqlite_sequence WHERE name IN ('ligne', 'repas')`)
     })
     exec('VACUUM') // hors transaction : SQLite le refuse dedans
