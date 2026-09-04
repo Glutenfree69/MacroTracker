@@ -184,9 +184,14 @@ async function telechargerDrive(fileId: string): Promise<Uint8Array> {
 
 /* ── Flux exposés ────────────────────────────────────────────────── */
 
-/** Préfixe l'erreur par l'étape : « import local : ... » plutôt qu'un message nu. */
+/** Préfixe l'erreur par l'étape : « import local : ... » plutôt qu'un message nu.
+ *  Le statut HTTP doit survivre à l'habillage, sinon estIntrouvable() ne
+ *  reconnaît plus le 404 qu'il est censé rattraper. */
 function etape<T>(nom: string, p: Promise<T>): Promise<T> {
-  return p.catch((e: any) => { throw new Error(`${nom} : ${e?.message ?? e}`) })
+  return p.catch((e: any) => {
+    const message = `${nom} : ${e?.message ?? e}`
+    throw e instanceof ErreurDrive ? new ErreurDrive(e.statut, message) : new Error(message)
+  })
 }
 
 const estIntrouvable = (e: unknown) => e instanceof ErreurDrive && e.statut === 404
