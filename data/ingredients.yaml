@@ -342,6 +342,15 @@
   lipides: 0.0
   fibres: 1.7
 
+- id: lentilles
+  nom: Lentilles conserve
+  categorie: legumes
+  kcal: 93
+  proteines: 6.6
+  glucides: 14
+  lipides: 0.5
+  fibres: 3.1
+
 - id: poelee_champetre
   nom: Poêlée champètre surgelé Lidl
   categorie: legumes
