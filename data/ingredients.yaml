@@ -238,6 +238,15 @@
   portions:
     - { label: "1 bol", g: 80 }
 
+- id: oat_flour
+  nom: Oat flour gout cookie
+  categorie: feculents
+  kcal: 391
+  proteines: 12
+  glucides: 68
+  lipides: 6.9
+  fibres: 4.5
+
 - id: huile_olive
   nom: Huile d'olive
   categorie: lipides
