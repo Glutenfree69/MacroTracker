@@ -378,6 +378,15 @@
   lipides: 5.5
   fibres: 1.7
 
+- id: sauce_tomates_tube
+  nom: Sauce indus tomates en tube
+  categorie: legumes
+  kcal: 151
+  proteines: 2.6
+  glucides: 15
+  lipides: 8.5
+  fibres: 2.1
+
 - id: sauce_tomates_piment
   nom: Sauce indus tomates piment barilla
   categorie: legumes
