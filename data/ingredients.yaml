@@ -351,6 +351,16 @@
   lipides: 0.0
   fibres: 1.7
 
+- id: petits_pois_carottes
+  nom: Petits pois et carottes conserve
+  categorie: legumes
+  kcal: 60
+  proteines: 3.6
+  glucides: 7.6
+  lipides: 0.7
+  fibres: 4.2
+
+
 - id: lentilles
   nom: Lentilles conserve
   categorie: legumes
