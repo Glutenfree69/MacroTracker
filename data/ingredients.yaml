@@ -315,6 +315,15 @@
   lipides: 4.3
   fibres: 2.3
 
+- id: puree_truc_verts
+  nom: Purée de haricots courgettes épinards pois indus
+  categorie: legumes
+  kcal: 50
+  proteines: 2.0
+  glucides: 4.7
+  lipides: 2.0
+  fibres: 2.6
+
 - id: puree_celeri
   nom: Purée de celeri surgelé
   categorie: legumes
