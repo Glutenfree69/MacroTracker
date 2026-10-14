@@ -155,6 +155,15 @@
   lipides: 1.5
   fibres: 0.0  
 
+- id: lait_amande
+  nom: Lait amande sans sucre
+  categorie: truc
+  kcal: 14
+  proteines: 0.0
+  glucides: 0.0
+  lipides: 1.1
+  fibres: 0.0  
+
 - id: vanilla_paste
   nom: Vanilla bean paste
   categorie: sucre
@@ -271,11 +280,11 @@
 - id: peanut_butter_powder
   nom: Peanut butter powder
   categorie: lipides
-  kcal: 443
+  kcal: 441
   proteines: 49
-  glucides: 16
+  glucides: 19
   lipides: 13
-  fibres: 17
+  fibres: 15
 
 - id: amandes
   nom: Amandes
