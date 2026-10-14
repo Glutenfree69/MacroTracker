@@ -125,6 +125,20 @@ function valider(brut) {
       ing.portions.push({ label: String(p.label), g: p.g })
     }
 
+    // Aliment qui se compte plutôt qu'il ne se pèse (l'œuf) : les macros restent
+    // pour 100 g, seul le poids moyen d'une pièce sert à convertir au logging.
+    ing.unite = null
+    if (item.unite != null) {
+      const u = item.unite
+      if (typeof u !== 'object' || Array.isArray(u) || !u.label || u.g === undefined) {
+        erreurs.push(`${tag} unité malformée : ${JSON.stringify(u)} (attendu label + g).`)
+      } else if (!estNombre(u.g) || u.g <= 0) {
+        erreurs.push(`${tag} unité « ${u.label} » : grammage invalide (${JSON.stringify(u.g)}).`)
+      } else {
+        ing.unite = { label: String(u.label), g: u.g }
+      }
+    }
+
     sortie.push(ing)
   })
 

@@ -15,7 +15,8 @@ const SCHEMA = `
 CREATE TABLE IF NOT EXISTS ingredient (
   id TEXT PRIMARY KEY, nom TEXT NOT NULL, categorie TEXT NOT NULL,
   kcal REAL NOT NULL, proteines REAL NOT NULL, glucides REAL NOT NULL,
-  lipides REAL NOT NULL, fibres REAL NOT NULL, note TEXT
+  lipides REAL NOT NULL, fibres REAL NOT NULL, note TEXT,
+  unite TEXT, unite_g REAL
 );
 CREATE TABLE IF NOT EXISTS portion (
   ingredient_id TEXT NOT NULL, label TEXT NOT NULL, grammes REAL NOT NULL
@@ -103,11 +104,22 @@ function migrerSansUberEats() {
   try { exec(`ALTER TABLE ligne DROP COLUMN uber_eats`) } catch { /* on vivra avec */ }
 }
 
+/** Les aliments qui se comptent (l'œuf) portent le poids moyen d'une pièce.
+    La table `ingredient` n'est qu'un cache du build : on ajoute les colonnes,
+    le prochain seed les remplit. Le journal n'est pas concerné. */
+function migrerUnite() {
+  const colonnes = exec(`PRAGMA table_info(ingredient)`).map((c: any) => c.name)
+  if (colonnes.includes('unite')) return
+  exec(`ALTER TABLE ingredient ADD COLUMN unite TEXT`)
+  exec(`ALTER TABLE ingredient ADD COLUMN unite_g REAL`)
+}
+
 function ouvrirBase() {
   db = new pool.OpfsSAHPoolDb('/macros.sqlite')
   db.exec(SCHEMA)
   migrer() // avant l'index : il porte sur une colonne que la v1 n'a pas
   migrerSansUberEats()
+  migrerUnite()
   db.exec(`CREATE INDEX IF NOT EXISTS idx_ligne_jour ON ligne(jour, repas_id)`)
 }
 
@@ -121,8 +133,11 @@ function seed(payload: { version: string; ingredients: any[] }) {
     exec('DELETE FROM ingredient')
     for (const i of payload.ingredients) {
       exec(
-        `INSERT INTO ingredient VALUES (?,?,?,?,?,?,?,?,?)`,
-        [i.id, i.nom, i.categorie, i.kcal, i.proteines, i.glucides, i.lipides, i.fibres, i.note ?? null],
+        `INSERT INTO ingredient (id, nom, categorie, kcal, proteines, glucides, lipides,
+                                 fibres, note, unite, unite_g)
+         VALUES (?,?,?,?,?,?,?,?,?,?,?)`,
+        [i.id, i.nom, i.categorie, i.kcal, i.proteines, i.glucides, i.lipides, i.fibres,
+         i.note ?? null, i.unite?.label ?? null, i.unite?.g ?? null],
       )
       for (const p of i.portions ?? []) {
         exec('INSERT INTO portion VALUES (?,?,?)', [i.id, p.label, p.g])

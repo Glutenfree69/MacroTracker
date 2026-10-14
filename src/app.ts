@@ -9,6 +9,8 @@ type Ing = {
   id: string; nom: string; categorie: string
   kcal: number; proteines: number; glucides: number; lipides: number; fibres: number
   note: string | null; portions_json: string | null
+  /** Aliment qui se compte (l'œuf) : poids moyen d'une pièce, saisie en nombre. */
+  unite: string | null; unite_g: number | null
 }
 type Ligne = {
   id: number; jour: string; repas_id: number; nom: string; grammes: number
@@ -39,8 +41,10 @@ const esc = (s: unknown) =>
 /** Accents et casse gommés des deux côtés de la comparaison : « poelee » doit
     trouver « Poêlée », et « pâtes » trouver « Pates ». Les noms de la base sont
     eux-mêmes inconstants en accentuation, la requête ne peut pas être seule à
-    faire l'effort. */
+    faire l'effort. Les ligatures ne se décomposent pas en NFD : sans le
+    remplacement, « oeuf » ne trouverait jamais « Œuf ». */
 const sansAccent = (s: string) => s.normalize('NFD').replace(/\p{Diacritic}/gu, '').toLowerCase()
+  .replace(/œ/g, 'oe').replace(/æ/g, 'ae')
 const dateFr = (j: string) =>
   new Date(j + 'T12:00:00').toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })
 const depuisTexte = (iso: string) => {
@@ -331,6 +335,10 @@ function panneauRecherche(repas: number | null) {
 
 function panneauQuantite(repas: number | null, ing: Ing) {
   const portions: { label: string; g: number }[] = JSON.parse(ing.portions_json || '[]')
+  // À la pièce, le champ porte un nombre et non des grammes ; la ligne enregistrée,
+  // elle, reste en grammes avec ses macros figées, comme n'importe quelle autre.
+  const unite = ing.unite && ing.unite_g ? { label: ing.unite, g: ing.unite_g } : null
+  const pluriel = (n: number) => unite!.label + (n > 1 ? 's' : '')
 
   const node = feuille(`
     <header class="feuille__tete">
@@ -339,26 +347,30 @@ function panneauQuantite(repas: number | null, ing: Ing) {
       <button data-fermer aria-label="Fermer">×</button>
     </header>
     ${ing.note ? `<p class="note">${esc(ing.note)}</p>` : ''}
+    ${unite ? `<p class="note">Estimation : 1 ${esc(unite.label)} ≈ ${r0(unite.g)} g</p>` : ''}
     <div class="pese">
-      <input class="quantite" type="number" inputmode="decimal" value="100" min="0" step="1">
-      <span class="unite">g</span>
+      <input class="quantite" type="number" inputmode="decimal" value="${unite ? 1 : 100}" min="0" step="1">
+      <span class="unite">${unite ? esc(unite.label) : 'g'}</span>
     </div>
-    ${portions.length ? `<div class="portions">${portions.map((p) =>
+    ${portions.length && !unite ? `<div class="portions">${portions.map((p) =>
       `<button class="portion" data-g="${p.g}">${esc(p.label)} · ${r0(p.g)} g</button>`).join('')}</div>` : ''}
     <div class="calcul"></div>
     <button class="valider">Ajouter au repas</button>`, `Peser ${ing.nom}`)
 
   const champ = node.querySelector<HTMLInputElement>('.quantite')!
+  const libelle = node.querySelector<HTMLSpanElement>('.unite')!
   const apercu = node.querySelector<HTMLDivElement>('.calcul')!
+  const grammesSaisis = () => (parseFloat(champ.value) || 0) * (unite ? unite.g : 1)
 
   const rafraichir = () => {
-    const k = (parseFloat(champ.value) || 0) / 100
+    if (unite) libelle.textContent = pluriel(parseFloat(champ.value) || 0)
+    const k = grammesSaisis() / 100
     apercu.innerHTML = MACROS.map((m) =>
       `<span><span class="pastille pastille--${m.cle}"></span>${(ing[m.cle] * k).toFixed(1)} g</span>`
     ).join('') + `<strong class="chiffre">${r0(ing.kcal * k)} kcal</strong>`
   }
   const valider = async () => {
-    const grammes = parseFloat(champ.value)
+    const grammes = grammesSaisis()
     if (!(grammes > 0)) return
     modale = null
     animerLignes = false
