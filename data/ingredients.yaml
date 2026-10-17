@@ -166,6 +166,15 @@
   lipides: 1.1
   fibres: 0.0  
 
+- id: lait_coco
+  nom: Lait de coco
+  categorie: truc
+  kcal: 172
+  proteines: 1.8
+  glucides: 2.8
+  lipides: 17.0
+  fibres: 0.0  
+
 - id: vanilla_paste
   nom: Vanilla bean paste
   categorie: sucre
