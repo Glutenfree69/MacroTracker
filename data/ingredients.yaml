@@ -371,6 +371,14 @@
   lipides: 0.0
   fibres: 2.9
 
+- id: legumes_wok
+  nom: Legumes wok surgelé
+  categorie: legumes
+  kcal: 324
+  glucides: 4.3
+  lipides: 0.0
+  fibres: 3.0
+
 - id: poivrons
   nom: Poivrons surgelé
   categorie: legumes
@@ -416,6 +424,15 @@
   glucides: 7.1
   lipides: 5.5
   fibres: 1.7
+
+- id: sauce_curry
+  nom: Sauce indus curry
+  categorie: legumes
+  kcal: 85
+  proteines: 1.2
+  glucides: 9.2
+  lipides: 4.6
+  fibres: 0.9
 
 - id: sauce_tomates_tube
   nom: Sauce indus tomates en tube
