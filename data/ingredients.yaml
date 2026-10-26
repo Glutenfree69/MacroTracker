@@ -139,6 +139,15 @@
   lipides: 2.0
   fibres: 0.0   
 
+- id: ketchup
+  nom: Ketchup sans sucre ajouté
+  categorie: sucre
+  kcal: 53
+  proteines: 1.5
+  glucides: 10.4
+  lipides: 0.2
+  fibres: 1.6  
+
 - id: lait_ecreme
   nom: Lait écrémé
   categorie: proteines
