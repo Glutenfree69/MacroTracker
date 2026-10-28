@@ -148,6 +148,15 @@
   lipides: 0.2
   fibres: 1.6  
 
+- id: Sauce_barbecue
+  nom: Sauce barbecue coréenne
+  categorie: sucre
+  kcal: 162
+  proteines: 2.8
+  glucides: 36
+  lipides: 0.6
+  fibres: 0  
+
 - id: lait_ecreme
   nom: Lait écrémé
   categorie: proteines
