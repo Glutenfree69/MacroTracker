@@ -148,7 +148,7 @@
   lipides: 0.2
   fibres: 1.6  
 
-- id: Sauce_barbecue
+- id: sauce_barbecue
   nom: Sauce barbecue coréenne
   categorie: sucre
   kcal: 162
