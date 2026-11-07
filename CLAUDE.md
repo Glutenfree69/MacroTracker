@@ -67,8 +67,13 @@ npm run preview  # sert dist/ comme le fera GitHub Pages
 `public/ingredients.json` est **généré** depuis `data/ingredients.yaml` par
 `scripts/build-ingredients.mjs` et git-ignoré. Ne jamais l'éditer à la main.
 
-Le déploiement est automatique : push sur `main` → workflow
-`.github/workflows/deploy.yml` → Pages. Une PR ne fait que valider.
+Déploiement **manuel** pour l'instant : `npm run deploy` builde en local (avec
+le client ID de `.env.local`) et force-push `dist/` sur la branche `gh-pages`,
+que Pages sert (source « Deploy from a branch »). Raison : le compte GitHub est
+bloqué côté billing, donc le workflow `.github/workflows/deploy.yml` ne démarre
+plus — un push sur `main` ne déploie rien. Pour revenir au déploiement auto une
+fois le billing réglé : `gh api -X PUT repos/Glutenfree69/MacroTracker/pages -f build_type=workflow`,
+puis supprimer la branche `gh-pages`.
 
 ## Workflow attendu
 

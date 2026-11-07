@@ -35,5 +35,9 @@ export/restauration manuelle du fichier `.sqlite` — boutons en pied de page.
 
 ## Déploiement
 
-Push sur `main` → `.github/workflows/deploy.yml` valide et déploie sur
-GitHub Pages automatiquement. Une PR ne fait que valider.
+`npm run deploy` : build local puis push de `dist/` sur la branche `gh-pages`,
+servie par GitHub Pages.
+
+Le workflow `.github/workflows/deploy.yml` (push sur `main` → validation +
+déploiement) est en pause tant que GitHub Actions n'est pas disponible sur le
+compte.

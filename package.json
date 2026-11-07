@@ -7,7 +7,8 @@
     "build": "npm run data && tsc --noEmit && vite build",
     "preview": "vite preview",
     "data": "node scripts/build-ingredients.mjs",
-    "check": "node scripts/build-ingredients.mjs --check"
+    "check": "node scripts/build-ingredients.mjs --check",
+    "deploy": "h=$(git describe --always --dirty) && npm run build && touch dist/.nojekyll && cd dist && rm -rf .git && git init -q -b gh-pages && git add -A && git commit -qm \"deploy $h\" && git push -qf git@github.com:Glutenfree69/MacroTracker.git gh-pages && rm -rf .git && echo \"Déployé ($h) → https://glutenfree69.github.io/MacroTracker/ (en ligne d'ici ~1 min)\""
   },
   "dependencies": {
     "@sqlite.org/sqlite-wasm": "^3.50.1-build1"
