@@ -426,8 +426,8 @@
   lipides: 0.5
   fibres: 3.1
 
-- id: beans_heinz
-  nom: Beans conserve
+- id: beanz_heinz
+  nom: Beanz conserve
   categorie: legumes
   kcal: 79
   proteines: 4.7
