@@ -418,13 +418,13 @@
 
 
 - id: lentilles
-  nom: Lentilles conserve
+  nom: Lentilles conserve à l'Auvergnate
   categorie: legumes
-  kcal: 93
-  proteines: 6.6
-  glucides: 14
-  lipides: 0.5
-  fibres: 3.1
+  kcal: 99
+  proteines: 6.1
+  glucides: 10
+  lipides: 3.2
+  fibres: 2.8
 
 - id: beanz_heinz
   nom: Beanz conserve
